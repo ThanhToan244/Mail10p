@@ -3,22 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xác Nhận Vượt Link</title>
+    <title>Nhận Mã Xác Nhận</title>
     <style>
         body { font-family: Arial, sans-serif; background: #0f172a; color: #fff; text-align: center; padding: 50px 20px; }
         .card { background: #1e293b; padding: 30px; border-radius: 12px; display: inline-block; max-width: 400px; width: 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .code-box { background: #334155; padding: 15px; font-size: 24px; font-weight: bold; letter-spacing: 2px; color: #38bdf8; border-radius: 8px; margin: 20px 0; user-select: all; }
-        .btn { display: inline-block; background: #2563eb; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 15px; }
-        .btn:hover { background: #1d4ed8; }
         p { color: #94a3b8; font-size: 14px; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2>🔒 Xác Thực Vượt Link 4m</h2>
+        <h2>🎉 Vượt Link Thành Công</h2>
         <div id="content">
-            <p>Vui lòng bấm nút bên dưới để hoàn thành vượt link và lấy mã xác nhận.</p>
-            <a href="#" id="link4mBtn" class="btn">Bấm Vào Đây Để Lấy Mã</a>
+            <p>Đang tải mã...</p>
         </div>
     </div>
 
@@ -26,32 +23,15 @@
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
         const contentDiv = document.getElementById('content');
-        
-        // Token Link4m của bạn
-        const apiToken = "667da5e0512ac00cba52fb6f";
-        
-        // Lấy URL hiện tại để Link4m redirect về sau khi vượt xong
-        const cleanUrl = window.location.href.split('&token_status')[0];
 
         if (!code) {
-            contentDiv.innerHTML = "<p style='color: #ef4444;'>LỖI: Thiếu mã định danh từ bot!</p>";
+            contentDiv.innerHTML = "<p style='color: #ef4444;'>Không tìm thấy mã xác nhận!</p>";
         } else {
-            // Kiểm tra xem người dùng đã hoàn thành vượt link quay lại chưa
-            const isCompleted = urlParams.has('token_status') || window.location.href.includes('completed');
-
-            if (isCompleted) {
-                // Nếu đã vượt xong, hiển thị mã code để copy
-                contentDiv.innerHTML = `
-                    <p>🎉 Vượt Link Thành Công!</p>
-                    <p>Mã xác nhận của bạn (có hiệu lực trong 10 phút):</p>
-                    <div class="code-box">${code}</div>
-                    <p>Hãy copy mã này và dán lại vào khung chat của Bot Telegram.</p>
-                `;
-            } else {
-                // Nếu chưa, tạo link chuyển hướng qua API Link4m
-                const link4mUrl = `https://link4m.co/api?api=${apiToken}&url=${encodeURIComponent(cleanUrl)}`;
-                document.getElementById('link4mBtn').href = link4mUrl;
-            }
+            contentDiv.innerHTML = `
+                <p>Mã xác nhận của bạn (có hiệu lực trong 10 phút):</p>
+                <div class="code-box">${code}</div>
+                <p>Hãy copy mã này và dán vào khung chat của Bot Telegram.</p>
+            `;
         }
     </script>
 </body>
