@@ -25,15 +25,14 @@
     </div>
 
     <script>
-        // Lấy mã code từ tham số trên URL (?code=...) do bot truyền vào
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
+        // Lấy mã code từ phần hash (#...) của URL
+        const code = window.location.hash.substring(1).toUpperCase();
 
-        if (code) {
+        if (code && code.length === 6) {
             document.getElementById('codeDisplay').innerText = code;
             
-            // Lệnh này sẽ tự động xóa sạch đuôi ?code=... trên thanh địa chỉ ngay lập tức
-            window.history.replaceState({}, document.title, window.location.pathname);
+            // Xóa sạch phần hash trên thanh địa chỉ
+            history.pushState("", document.title, window.location.pathname + window.location.search);
         } else {
             document.getElementById('codeDisplay').innerText = "LỖI MÃ!";
         }
