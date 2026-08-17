@@ -1,21 +1,66 @@
 <!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>Mã Xác Nhận</title></head>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xác nhận vượt link - Mail10p</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background: #f4f4f9; }
+        .box { background: white; padding: 25px; border-radius: 8px; display: inline-block; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); }
+        h2 { color: #28a745; }
+    </style>
+</head>
 <body>
-    <div id="codeDisplay">Đang tải...</div>
-    <button onclick="copyCode()">Sao Chép</button>
-    <script>
-        // Lấy mã từ hash (#...) và xóa nó khỏi thanh địa chỉ
-        const code = window.location.hash.substring(1).toUpperCase();
-        if(code) {
-            document.getElementById('codeDisplay').innerText = code;
-            history.replaceState(null, null, ' ');
+    <div class="box">
+        <h2 id="status">Đang xử lý xác nhận...</h2>
+        <p>Vui lòng đợi trong giây lát, hệ thống đang tự động cộng giờ cho bạn.</p>
+    </div>
+
+    <!-- Import Firebase SDK (Modular v9) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getDatabase, ref, runTransaction } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+        // Cấu hình Firebase chính thức từ dự án của bạn
+        const firebaseConfig = {
+            apiKey: "AIzaSyBtFL-IArND-ACnhOdzdyzu9010KgVEd44",
+            authDomain: "mail-10p.firebaseapp.com",
+            databaseURL: "https://mail-10p-default-rtdb.firebaseio.com", // Đường dẫn Realtime Database của bạn
+            projectId: "mail-10p",
+            storageBucket: "mail-10p.firebasestorage.app",
+            messagingSenderId: "605076530883",
+            appId: "1:605076530883:web:2dfbeecdf5d4603c09a476",
+            measurementId: "G-S2WCFL4DMY"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Lấy Telegram ID do Link4m truyền về (Ví dụ: https://mail-10p.web.app/?id=CHAT_ID)
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('id');
+
+        const statusEl = document.getElementById("status");
+
+        if (userId) {
+            // Đường dẫn lưu số giờ trong Database: users / [ID_Nguoi_Dung] / gio
+            const userGioRef = ref(db, 'users/' + userId + '/gio');
+
+            // Tự động cộng thêm 1 giờ an toàn
+            runTransaction(userGioRef, (currentGio) => {
+                return (currentGio || 0) + 1; 
+            }).then(() => {
+                statusEl.innerText = "Xác nhận thành công!";
+                document.querySelector("p").innerText = "Bạn đã được cộng giờ vào tài khoản. Hãy quay lại Telegram để tiếp tục sử dụng!";
+            }).catch((error) => {
+                statusEl.style.color = "red";
+                statusEl.innerText = "Có lỗi xảy ra!";
+                console.error(error);
+            });
         } else {
-            document.getElementById('codeDisplay').innerText = "LỖI!";
-        }
-        function copyCode() {
-            navigator.clipboard.writeText(code);
-            alert('Đã copy!');
+            statusEl.style.color = "orange";
+            statusEl.innerText = "Thiếu thông tin người dùng!";
+            document.querySelector("p").innerText = "Đường dẫn không hợp lệ hoặc thiếu mã định danh.";
         }
     </script>
 </body>
