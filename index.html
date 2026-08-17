@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xác Nhận Vượt Link</title>
+    <title>Lấy Mã Xác Nhận</title>
     <style>
         body { font-family: Arial, sans-serif; background: #0f172a; color: #fff; text-align: center; padding: 50px 20px; }
         .card { background: #1e293b; padding: 30px; border-radius: 12px; display: inline-block; max-width: 400px; width: 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .code-box { background: #334155; padding: 15px; font-size: 24px; font-weight: bold; letter-spacing: 2px; color: #38bdf8; border-radius: 8px; margin: 20px 0; user-select: all; }
+        .btn-copy { background: #38bdf8; color: #0f172a; border: none; padding: 12px 20px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; transition: 0.2s; }
+        .btn-copy:hover { background: #0ea5e9; }
         p { color: #94a3b8; font-size: 14px; }
     </style>
 </head>
@@ -15,29 +17,34 @@
     <div class="card">
         <h2>🎉 Vượt Link Thành Công</h2>
         <div id="content">
-            <p>Đang tạo mã xác nhận...</p>
+            <p>Mã xác nhận của bạn:</p>
+            <div id="codeDisplay" class="code-box">...</div>
+            <button class="btn-copy" onclick="copyCode()">📋 Sao Chép Mã</button>
+            <p style="margin-top: 15px;">Dán mã này vào khung chat của Bot Telegram nhé.</p>
         </div>
     </div>
 
     <script>
-        // Tự động tạo mã ngẫu nhiên ngay trên trình duyệt của người dùng sau khi vượt link
-        function generateCode(length = 6) {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            let result = '';
-            for (let i = 0; i < length; i++) {
-                result += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return result;
+        // Tự động tạo mã 6 ký tự ngẫu nhiên
+        const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+        document.getElementById('codeDisplay').innerText = code;
+
+        // Hàm hỗ trợ bấm nút sao chép
+        function copyCode() {
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = document.querySelector('.btn-copy');
+                btn.innerText = "✅ Đã Sao Chép!";
+                btn.style.background = "#22c55e";
+                btn.style.color = "#fff";
+                setTimeout(() => {
+                    btn.innerText = "📋 Sao Chép Mã";
+                    btn.style.background = "#38bdf8";
+                    btn.style.color = "#0f172a";
+                }, 2000);
+            }).catch(err => {
+                alert('Không thể sao chép, vui lòng bôi đen và copy thủ công!');
+            });
         }
-
-        const code = generateCode(6);
-        const contentDiv = document.getElementById('content');
-
-        contentDiv.innerHTML = `
-            <p>Mã xác nhận của bạn:</p>
-            <div class="code-box">${code}</div>
-            <p>Hãy copy mã này và dán lại vào khung chat của Bot Telegram.</p>
-        `;
     </script>
 </body>
 </html>
