@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nhận Mã Xác Nhận</title>
+    <title>Xác Nhận Vượt Link</title>
     <style>
         body { font-family: Arial, sans-serif; background: #0f172a; color: #fff; text-align: center; padding: 50px 20px; }
         .card { background: #1e293b; padding: 30px; border-radius: 12px; display: inline-block; max-width: 400px; width: 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
@@ -15,24 +15,29 @@
     <div class="card">
         <h2>🎉 Vượt Link Thành Công</h2>
         <div id="content">
-            <p>Đang tải mã...</p>
+            <p>Đang tạo mã xác nhận...</p>
         </div>
     </div>
 
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
+        // Tự động tạo mã ngẫu nhiên ngay trên trình duyệt của người dùng sau khi vượt link
+        function generateCode(length = 6) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        const code = generateCode(6);
         const contentDiv = document.getElementById('content');
 
-        if (!code) {
-            contentDiv.innerHTML = "<p style='color: #ef4444;'>Không tìm thấy mã xác nhận!</p>";
-        } else {
-            contentDiv.innerHTML = `
-                <p>Mã xác nhận của bạn (có hiệu lực trong 10 phút):</p>
-                <div class="code-box">${code}</div>
-                <p>Hãy copy mã này và dán vào khung chat của Bot Telegram.</p>
-            `;
-        }
+        contentDiv.innerHTML = `
+            <p>Mã xác nhận của bạn:</p>
+            <div class="code-box">${code}</div>
+            <p>Hãy copy mã này và dán lại vào khung chat của Bot Telegram.</p>
+        `;
     </script>
 </body>
 </html>
