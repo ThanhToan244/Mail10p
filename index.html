@@ -18,19 +18,29 @@
         <h2>🎉 Vượt Link Thành Công</h2>
         <div id="content">
             <p>Mã xác nhận của bạn:</p>
-            <div id="codeDisplay" class="code-box">...</div>
+            <div id="codeDisplay" class="code-box">Đang tải...</div>
             <button class="btn-copy" onclick="copyCode()">📋 Sao Chép Mã</button>
             <p style="margin-top: 15px;">Dán mã này vào khung chat của Bot Telegram nhé.</p>
         </div>
     </div>
 
     <script>
-        // Tự động tạo mã 6 ký tự ngẫu nhiên
-        const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-        document.getElementById('codeDisplay').innerText = code;
+        // Lấy mã code từ tham số trên URL (?code=...) do bot truyền vào
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
 
-        // Hàm hỗ trợ bấm nút sao chép
+        if (code) {
+            document.getElementById('codeDisplay').innerText = code;
+            
+            // Xóa sạch đuôi ?code=... trên thanh địa chỉ trình duyệt để che giấu hoàn toàn
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else {
+            document.getElementById('codeDisplay').innerText = "LỖI MÃ!";
+        }
+
+        // Hàm xử lý khi bấm nút sao chép
         function copyCode() {
+            if (!code) return;
             navigator.clipboard.writeText(code).then(() => {
                 const btn = document.querySelector('.btn-copy');
                 btn.innerText = "✅ Đã Sao Chép!";
