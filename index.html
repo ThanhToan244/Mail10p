@@ -32,7 +32,7 @@
         if (code) {
             document.getElementById('codeDisplay').innerText = code;
             
-            // Xóa sạch đuôi ?code=... trên thanh địa chỉ trình duyệt để che giấu hoàn toàn
+            // Lệnh này sẽ tự động xóa sạch đuôi ?code=... trên thanh địa chỉ ngay lập tức
             window.history.replaceState({}, document.title, window.location.pathname);
         } else {
             document.getElementById('codeDisplay').innerText = "LỖI MÃ!";
