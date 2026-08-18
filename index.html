@@ -21,14 +21,16 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Thay thông số cấu hình Firebase của bạn vào đây
+        // Cấu hình Firebase của bạn
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
+            apiKey: "AIzaSyBtFL-IArND-ACnhOdzdyzu9010KgVEd44",
             authDomain: "mail-10p.firebaseapp.com",
+            databaseURL: "https://mail-10p-default-rtdb.firebaseio.com",
             projectId: "mail-10p",
-            storageBucket: "mail-10p.appspot.com",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            storageBucket: "mail-10p.firebasestorage.app",
+            messagingSenderId: "605076530883",
+            appId: "1:605076530883:web:2dfbeecdf5d4603c09a476",
+            measurementId: "G-S2WCFL4DMY"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -38,14 +40,11 @@
             const statusText = document.getElementById("status");
             const titleText = document.getElementById("title");
             
-            // Lấy chat_id từ URL hoặc từ bộ nhớ tạm (localStorage) nếu lỡ F5
             let chatId = window.location.hash.substring(1);
             
             if (chatId) {
-                // Lưu lại vào trình duyệt để phòng trường hợp bấm F5 bị mất
                 localStorage.setItem("pending_chat_id", chatId);
             } else {
-                // Nếu trên URL không có, lấy lại từ bộ nhớ tạm
                 chatId = localStorage.getItem("pending_chat_id");
             }
 
@@ -65,10 +64,8 @@
                     currentBypass = userDoc.data().bypass || 0;
                 }
 
-                // Cộng lượt vượt link
                 await setDoc(userRef, { bypass: currentBypass + 1 }, { merge: true });
 
-                // Xóa bộ nhớ tạm sau khi đã cộng thành công
                 localStorage.removeItem("pending_chat_id");
 
                 titleText.innerText = "Thành công!";
