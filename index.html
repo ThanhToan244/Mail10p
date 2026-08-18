@@ -1,106 +1,49 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xác Nhận Vượt Link - Mail 10P</title>
-    <!-- Sử dụng Firebase v10 bản compat tương thích tốt với script cũ -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding-top: 80px; background: #f4f4f9; }
-        .card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0px 4px 15px rgba(0,0,0,0.1); display: inline-block; max-width: 400px; width: 90%; }
-        h2 { color: #28a745; margin-bottom: 15px; }
-        p { color: #555; line-height: 1.5; }
-    </style>
-</head>
-<body>
+<script type="module">
+    // Import Firebase từ CDN
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    <div class="card">
-        <h2 id="status">Đang xử lý hệ thống... ⏳</h2>
-        <p id="desc">Vui lòng chờ trong giây lát, hệ thống đang cấp quyền cho bạn.</p>
-    </div>
+    // Cấu hình Firebase của bạn (Lấy từ file serviceAccountKey.json hoặc cấu hình web của bạn)
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "mail-10p.firebaseapp.com",
+        projectId: "mail-10p",
+        storageBucket: "mail-10p.appspot.com",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
 
-    <script>
-        // Cấu hình Firebase chuẩn lấy từ bảng điều khiển của bạn
-        const firebaseConfig = {
-            apiKey: "AIzaSyBtFL-IAtn0-ACnhDdzdzyu9BI8KgVEd44",
-            authDomain: "mail-10p.firebaseapp.com",
-            databaseURL: "https://mail-10p-default-rtdb.firebaseio.com",
-            projectId: "mail-10p",
-            storageBucket: "mail-10p.appspot.com",
-            messagingSenderId: "605076530883",
-            appId: "1:605076530883:web:2dfbeecd5d4603c09s476",
-            measurementId: "G-SZWCFL4DWY"
-        };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+    async function verifyBypass() {
+        // Lấy chat_id từ phần sau dấu # trên URL (Ví dụ: .../#123456789)
+        const chatId = window.location.hash.substring(1);
+        const statusDiv = document.getElementById("status"); // Thẻ hiển thị thông báo trên web của bạn
 
-        // Lấy chat_id được truyền ngầm từ bot qua đuôi URL (#chat_id)
-        function getChatId() {
-            const hash = window.location.hash.replace('#', '');
-            if (hash) return hash;
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get('id');
+        if (!chatId) {
+            statusDiv.innerHTML = "❌ Lỗi hệ thống! Không tìm thấy thông tin tài khoản Telegram của bạn.";
+            return;
         }
 
-        async function rewardUser() {
-            const chatId = getChatId();
-            const statusEl = document.getElementById("status");
-            const descEl = document.getElementById("desc");
-
-            if (!chatId) {
-                statusEl.innerText = "❌ Lỗi hệ thống!";
-                descEl.innerText = "Không tìm thấy thông tin tài khoản Telegram của bạn. Vui lòng bấm lại link từ bot.";
-                return;
+        try {
+            const userRef = doc(db, "users", chatId);
+            const userDoc = await getDoc(userRef);
+            
+            let bypassCount = 1;
+            if (userDoc.exists()) {
+                bypassCount = (userDoc.data().bypass || 0) + 1;
             }
 
-            try {
-                const userRef = db.collection("users").doc(chatId);
-                const doc = await userRef.get();
-                const today = new Date().toISOString().split('T')[0];
+            // Cập nhật trạng thái đã vượt link lên Firestore
+            await setDoc(userRef, { bypass: bypassCount }, { merge: true });
 
-                let bypass = 1;
-                let extra_hours = 3;
-                let active_emails = [];
-
-                if (doc.exists) {
-                    let data = doc.data();
-                    // Nếu sang ngày mới thì reset lại số lượt vượt
-                    if (data.date !== today) {
-                        bypass = 1;
-                    } else {
-                        bypass = (data.bypass || 0) + 1;
-                    }
-                    extra_hours = (data.extra_hours || 0) + 3;
-                    active_emails = data.active_emails || [];
-                }
-
-                if (bypass > 2) {
-                    statusEl.innerText = "⚠️ Đã đạt giới hạn!";
-                    descEl.innerText = "Bạn đã hoàn thành tối đa 2 lần vượt link trong ngày hôm nay.";
-                    return;
-                }
-
-                // Cập nhật dữ liệu lên Firestore
-                await userRef.set({
-                    bypass: bypass,
-                    extra_hours: extra_hours,
-                    date: today,
-                    active_emails: active_emails
-                }, { merge: true });
-
-                statusEl.innerText = "🎉 Vượt Link Thành Công!";
-                descEl.innerText = "Hệ thống đã cộng giờ và mở quyền thành công cho bạn. Bây giờ bạn có thể tắt trang này và quay lại Bot Telegram để sử dụng!";
-            } catch (error) {
-                console.error("Lỗi Firestore:", error);
-                statusEl.innerText = "❌ Lỗi kết nối!";
-                descEl.innerText = "Không thể lưu dữ liệu lên hệ thống. Vui lòng thử lại sau.";
-            }
+            statusDiv.innerHTML = "✅ Vượt link thành công! Bạn có thể quay lại Telegram để sử dụng bot.";
+        } catch (error) {
+            console.error("Lỗi:", error);
+            statusDiv.innerHTML = "❌ Có lỗi xảy ra khi cập nhật hệ thống.";
         }
+    }
 
-        window.onload = rewardUser;
-    </script>
-</body>
-</html>
+    verifyBypass();
+</script>
