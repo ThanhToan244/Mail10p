@@ -1,49 +1,70 @@
-<script type="module">
-    // Import Firebase từ CDN
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xác Nhận Vượt Link</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background-color: #f4f4f9; color: #333; }
+        .container { max-width: 500px; margin: auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h2 { color: #28a745; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Hệ Thống Vượt Link</h2>
+        <p id="status">Đang xử lý xác nhận, vui lòng chờ trong giây lát...</p>
+    </div>
 
-    // Cấu hình Firebase của bạn (Lấy từ file serviceAccountKey.json hoặc cấu hình web của bạn)
-    const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "mail-10p.firebaseapp.com",
-        projectId: "mail-10p",
-        storageBucket: "mail-10p.appspot.com",
-        messagingSenderId: "YOUR_SENDER_ID",
-        appId: "YOUR_APP_ID"
-    };
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+        // Thay các thông số cấu hình Firebase của bạn vào đây
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "mail-10p.firebaseapp.com",
+            projectId: "mail-10p",
+            storageBucket: "mail-10p.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
 
-    async function verifyBypass() {
-        // Lấy chat_id từ phần sau dấu # trên URL (Ví dụ: .../#123456789)
-        const chatId = window.location.hash.substring(1);
-        const statusDiv = document.getElementById("status"); // Thẻ hiển thị thông báo trên web của bạn
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-        if (!chatId) {
-            statusDiv.innerHTML = "❌ Lỗi hệ thống! Không tìm thấy thông tin tài khoản Telegram của bạn.";
-            return;
-        }
+        async function verifyBypass() {
+            const chatId = window.location.hash.substring(1);
+            const statusText = document.getElementById("status");
 
-        try {
-            const userRef = doc(db, "users", chatId);
-            const userDoc = await getDoc(userRef);
-            
-            let bypassCount = 1;
-            if (userDoc.exists()) {
-                bypassCount = (userDoc.data().bypass || 0) + 1;
+            if (!chatId) {
+                statusText.innerHTML = "❌ Lỗi hệ thống! Không tìm thấy thông tin tài khoản Telegram của bạn.";
+                statusText.style.color = "red";
+                return;
             }
 
-            // Cập nhật trạng thái đã vượt link lên Firestore
-            await setDoc(userRef, { bypass: bypassCount }, { merge: true });
+            try {
+                const userRef = doc(db, "users", chatId);
+                const userDoc = await getDoc(userRef);
+                
+                let currentBypass = 0;
+                if (userDoc.exists()) {
+                    currentBypass = userDoc.data().bypass || 0;
+                }
 
-            statusDiv.innerHTML = "✅ Vượt link thành công! Bạn có thể quay lại Telegram để sử dụng bot.";
-        } catch (error) {
-            console.error("Lỗi:", error);
-            statusDiv.innerHTML = "❌ Có lỗi xảy ra khi cập nhật hệ thống.";
+                // Cộng thêm 1 lượt vượt link
+                await setDoc(userRef, { bypass: currentBypass + 1 }, { merge: true });
+
+                statusText.innerHTML = "✅ Vượt link thành công!<br>Bây giờ bạn có thể quay lại Telegram để sử dụng bot.";
+                statusText.style.color = "green";
+            } catch (error) {
+                console.error("Lỗi:", error);
+                statusText.innerHTML = "❌ Có lỗi xảy ra khi kết nối cơ sở dữ liệu.";
+                statusText.style.color = "red";
+            }
         }
-    }
 
-    verifyBypass();
-</script>
+        verifyBypass();
+    </script>
+</body>
+</html>
