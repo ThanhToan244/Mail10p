@@ -8,11 +8,12 @@
         body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background-color: #f4f4f9; color: #333; }
         .container { max-width: 500px; margin: auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         h2 { color: #28a745; }
+        .error { color: red; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Hệ Thống Vượt Link</h2>
+        <h2 id="title">Hệ Thống Vượt Link</h2>
         <p id="status">Đang xử lý xác nhận, vui lòng chờ trong giây lát...</p>
     </div>
 
@@ -20,7 +21,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Thay các thông số cấu hình Firebase của bạn vào đây
+        // Thay thông số cấu hình Firebase của bạn vào đây
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
             authDomain: "mail-10p.firebaseapp.com",
@@ -34,12 +35,24 @@
         const db = getFirestore(app);
 
         async function verifyBypass() {
-            const chatId = window.location.hash.substring(1);
             const statusText = document.getElementById("status");
+            const titleText = document.getElementById("title");
+            
+            // Lấy chat_id từ URL hoặc từ bộ nhớ tạm (localStorage) nếu lỡ F5
+            let chatId = window.location.hash.substring(1);
+            
+            if (chatId) {
+                // Lưu lại vào trình duyệt để phòng trường hợp bấm F5 bị mất
+                localStorage.setItem("pending_chat_id", chatId);
+            } else {
+                // Nếu trên URL không có, lấy lại từ bộ nhớ tạm
+                chatId = localStorage.getItem("pending_chat_id");
+            }
 
             if (!chatId) {
-                statusText.innerHTML = "❌ Lỗi hệ thống! Không tìm thấy thông tin tài khoản Telegram của bạn.";
-                statusText.style.color = "red";
+                titleText.innerText = "Lỗi hệ thống!";
+                statusText.innerHTML = "❌ Không tìm thấy thông tin tài khoản Telegram.<br>Vui lòng bấm lại link từ bot Telegram.";
+                statusText.className = "error";
                 return;
             }
 
@@ -52,15 +65,19 @@
                     currentBypass = userDoc.data().bypass || 0;
                 }
 
-                // Cộng thêm 1 lượt vượt link
+                // Cộng lượt vượt link
                 await setDoc(userRef, { bypass: currentBypass + 1 }, { merge: true });
 
+                // Xóa bộ nhớ tạm sau khi đã cộng thành công
+                localStorage.removeItem("pending_chat_id");
+
+                titleText.innerText = "Thành công!";
                 statusText.innerHTML = "✅ Vượt link thành công!<br>Bây giờ bạn có thể quay lại Telegram để sử dụng bot.";
-                statusText.style.color = "green";
             } catch (error) {
                 console.error("Lỗi:", error);
+                titleText.innerText = "Lỗi kết nối!";
                 statusText.innerHTML = "❌ Có lỗi xảy ra khi kết nối cơ sở dữ liệu.";
-                statusText.style.color = "red";
+                statusText.className = "error";
             }
         }
 
