@@ -3,58 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xác nhận cộng giờ - Mail10p</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <title>Xác Nhận Vượt Link - Mail 10P</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <style>
-        body { font-family: 'Poppins', sans-serif; background: #0f172a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: #1e293b; padding: 30px; border-radius: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 85%; max-width: 400px; }
-        .loader { border: 5px solid #334155; border-top: 5px solid #22c55e; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        h2 { margin-bottom: 10px; }
-        p { color: #94a3b8; font-size: 0.9em; }
-        .success { color: #22c55e; display: none; }
+        body { font-family: Arial, sans-serif; text-align: center; padding-top: 50px; background: #f4f4f9; }
+        .card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1); display: inline-block; }
+        h2 { color: #28a745; }
+        p { color: #555; }
     </style>
 </head>
 <body>
+
     <div class="card">
-        <div id="loading">
-            <div class="loader"></div>
-            <h2>Đang xác nhận...</h2>
-            <p>Hệ thống đang cộng giờ vào tài khoản của bạn.</p>
-        </div>
-        <div id="result" class="success">
-            <h2 style="color: #22c55e;">Thành công! 🎉</h2>
-            <p>Bạn đã được cộng thêm 1 giờ. Hãy quay lại Telegram để tiếp tục trải nghiệm!</p>
-        </div>
+        <h2 id="status">Đang xử lý hệ thống... ⏳</h2>
+        <p id="desc">Vui lòng chờ trong giây lát, hệ thống đang cấp quyền cho bạn.</p>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getDatabase, ref, runTransaction } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
-
+    <script>
+        // CẤU HÌNH FIREBASE WEB (Lấy từ Firebase Console của bạn)
         const firebaseConfig = {
-            apiKey: "AIzaSyBtFL-IArND-ACnhOdzdyzu9010KgVEd44",
+            apiKey: "AIzaSy...", // Điền API Key của bạn vào đây
             authDomain: "mail-10p.firebaseapp.com",
-            databaseURL: "https://mail-10p-default-rtdb.firebaseio.com",
             projectId: "mail-10p",
-            storageBucket: "mail-10p.firebasestorage.app",
-            messagingSenderId: "605076530883",
-            appId: "1:605076530883:web:2dfbeecdf5d4603c09a476",
-            measurementId: "G-S2WCFL4DMY"
+            storageBucket: "mail-10p.appspot.com",
+            messagingSenderId: "...",
+            appId: "..."
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-        const userId = new URLSearchParams(window.location.search).get('id');
-
-        if (userId) {
-            runTransaction(ref(db, 'users/' + userId + '/gio'), (cur) => (cur || 0) + 1)
-            .then(() => {
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('result').style.display = 'block';
-            });
+        // Lấy chat_id từ tham số trên URL (Ví dụ: .../#123456789 hoặc .../?id=123456789)
+        function getChatId() {
+            const hash = window.location.hash.replace('#', '');
+            if (hash) return hash;
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('id');
         }
+
+        async function rewardUser() {
+            const chatId = getChatId();
+            const statusEl = document.getElementById("status");
+            const descEl = document.getElementById("desc");
+
+            if (!chatId) {
+                statusEl.innerText = "❌ Lỗi hệ thống!";
+                descEl.innerText = "Không tìm thấy thông tin tài khoản Telegram của bạn.";
+                return;
+            }
+
+            try {
+                const userRef = db.collection("users").doc(chatId);
+                const doc = await userRef.get();
+                const today = new Date().toISOString().split('T')[0];
+
+                let bypass = 1;
+                let extra_hours = 3;
+                let active_emails = [];
+
+                if (doc.exists) {
+                    let data = doc.data();
+                    // Nếu sang ngày mới thì reset lượt vượt
+                    if (data.date !== today) {
+                        bypass = 1;
+                    } else {
+                        bypass = (data.bypass || 0) + 1;
+                    }
+                    extra_hours = (data.extra_hours || 0) + 3;
+                    active_emails = data.active_emails || [];
+                }
+
+                if (bypass > 2) {
+                    statusEl.innerText = "⚠️ Đã đạt giới hạn!";
+                    descEl.innerText = "Bạn đã hoàn thành tối đa 2 lần vượt link trong ngày hôm nay.";
+                    return;
+                }
+
+                // Cập nhật lại dữ liệu lên Firebase Firestore
+                await userRef.set({
+                    bypass: bypass,
+                    extra_hours: extra_hours,
+                    date: today,
+                    active_emails: active_emails
+                }, { merge: true });
+
+                statusEl.innerText = "🎉 Vượt Link Thành Công!";
+                descEl.innerText = "Hệ thống đã cộng giờ và mở quyền cho bạn. Bạn có thể quay lại Bot Telegram để sử dụng!";
+            } catch (error) {
+                console.error("Lỗi Firestore:", error);
+                statusEl.innerText = "❌ Lỗi kết nối!";
+                descEl.innerText = "Không thể lưu dữ liệu lên hệ thống. Vui lòng thử lại sau.";
+            }
+        }
+
+        window.onload = rewardUser;
     </script>
 </body>
 </html>
