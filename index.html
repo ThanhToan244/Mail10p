@@ -14,14 +14,13 @@
 <body>
     <div class="container">
         <h2 id="title">Hệ Thống Vượt Link</h2>
-        <p id="status">Đang xử lý xác nhận, vui lòng chờ trong giây lát...</p>
+        <p id="status">Đang xử lý cộng quyền, vui lòng chờ trong giây lát...</p>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Cấu hình Firebase của bạn
         const firebaseConfig = {
             apiKey: "AIzaSyBtFL-IArND-ACnhOdzdyzu9010KgVEd44",
             authDomain: "mail-10p.firebaseapp.com",
@@ -40,17 +39,18 @@
             const statusText = document.getElementById("status");
             const titleText = document.getElementById("title");
             
-            let chatId = window.location.hash.substring(1);
+            // Đọc trực tiếp chat_id từ thanh địa chỉ URL
+            const urlParams = new URLSearchParams(window.location.search);
+            let chatId = urlParams.get("chat_id");
             
-            if (chatId) {
-                localStorage.setItem("pending_chat_id", chatId);
-            } else {
-                chatId = localStorage.getItem("pending_chat_id");
+            // Phòng hờ nếu link bị chuyển qua dạng hash (#)
+            if (!chatId && window.location.hash) {
+                chatId = window.location.hash.substring(1);
             }
 
             if (!chatId) {
                 titleText.innerText = "Lỗi hệ thống!";
-                statusText.innerHTML = "❌ Không tìm thấy thông tin tài khoản Telegram.<br>Vui lòng bấm lại link từ bot Telegram.";
+                statusText.innerHTML = "❌ Không tìm thấy thông tin tài khoản.<br>Vui lòng bấm lại link từ bot Telegram.";
                 statusText.className = "error";
                 return;
             }
@@ -64,16 +64,15 @@
                     currentBypass = userDoc.data().bypass || 0;
                 }
 
+                // Cộng trực tiếp 1 lượt vượt link vào Firebase cho đúng chat_id đó
                 await setDoc(userRef, { bypass: currentBypass + 1 }, { merge: true });
-
-                localStorage.removeItem("pending_chat_id");
 
                 titleText.innerText = "Thành công!";
                 statusText.innerHTML = "✅ Vượt link thành công!<br>Bây giờ bạn có thể quay lại Telegram để sử dụng bot.";
             } catch (error) {
                 console.error("Lỗi:", error);
                 titleText.innerText = "Lỗi kết nối!";
-                statusText.innerHTML = "❌ Có lỗi xảy ra khi kết nối cơ sở dữ liệu.";
+                statusText.innerHTML = "❌ Có lỗi xảy ra khi cập nhật hệ thống.";
                 statusText.className = "error";
             }
         }
