@@ -4,13 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Xác Nhận Vượt Link - Mail 10P</title>
+    <!-- Sử dụng Firebase v10 bản compat tương thích tốt với script cũ -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding-top: 50px; background: #f4f4f9; }
-        .card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1); display: inline-block; }
-        h2 { color: #28a745; }
-        p { color: #555; }
+        body { font-family: Arial, sans-serif; text-align: center; padding-top: 80px; background: #f4f4f9; }
+        .card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0px 4px 15px rgba(0,0,0,0.1); display: inline-block; max-width: 400px; width: 90%; }
+        h2 { color: #28a745; margin-bottom: 15px; }
+        p { color: #555; line-height: 1.5; }
     </style>
 </head>
 <body>
@@ -21,20 +22,22 @@
     </div>
 
     <script>
-        // CẤU HÌNH FIREBASE WEB (Lấy từ Firebase Console của bạn)
+        // Cấu hình Firebase chuẩn lấy từ bảng điều khiển của bạn
         const firebaseConfig = {
-            apiKey: "AIzaSy...", // Điền API Key của bạn vào đây
+            apiKey: "AIzaSyBtFL-IAtn0-ACnhDdzdzyu9BI8KgVEd44",
             authDomain: "mail-10p.firebaseapp.com",
+            databaseURL: "https://mail-10p-default-rtdb.firebaseio.com",
             projectId: "mail-10p",
             storageBucket: "mail-10p.appspot.com",
-            messagingSenderId: "...",
-            appId: "..."
+            messagingSenderId: "605076530883",
+            appId: "1:605076530883:web:2dfbeecd5d4603c09s476",
+            measurementId: "G-SZWCFL4DWY"
         };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // Lấy chat_id từ tham số trên URL (Ví dụ: .../#123456789 hoặc .../?id=123456789)
+        // Lấy chat_id được truyền ngầm từ bot qua đuôi URL (#chat_id)
         function getChatId() {
             const hash = window.location.hash.replace('#', '');
             if (hash) return hash;
@@ -49,7 +52,7 @@
 
             if (!chatId) {
                 statusEl.innerText = "❌ Lỗi hệ thống!";
-                descEl.innerText = "Không tìm thấy thông tin tài khoản Telegram của bạn.";
+                descEl.innerText = "Không tìm thấy thông tin tài khoản Telegram của bạn. Vui lòng bấm lại link từ bot.";
                 return;
             }
 
@@ -64,7 +67,7 @@
 
                 if (doc.exists) {
                     let data = doc.data();
-                    // Nếu sang ngày mới thì reset lượt vượt
+                    // Nếu sang ngày mới thì reset lại số lượt vượt
                     if (data.date !== today) {
                         bypass = 1;
                     } else {
@@ -80,7 +83,7 @@
                     return;
                 }
 
-                // Cập nhật lại dữ liệu lên Firebase Firestore
+                // Cập nhật dữ liệu lên Firestore
                 await userRef.set({
                     bypass: bypass,
                     extra_hours: extra_hours,
@@ -89,7 +92,7 @@
                 }, { merge: true });
 
                 statusEl.innerText = "🎉 Vượt Link Thành Công!";
-                descEl.innerText = "Hệ thống đã cộng giờ và mở quyền cho bạn. Bạn có thể quay lại Bot Telegram để sử dụng!";
+                descEl.innerText = "Hệ thống đã cộng giờ và mở quyền thành công cho bạn. Bây giờ bạn có thể tắt trang này và quay lại Bot Telegram để sử dụng!";
             } catch (error) {
                 console.error("Lỗi Firestore:", error);
                 statusEl.innerText = "❌ Lỗi kết nối!";
