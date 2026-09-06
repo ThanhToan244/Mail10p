@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đăng Nhập Telegram - TToan</title>
+    <title>Hệ Thống Get Key - TToan</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
@@ -11,19 +11,29 @@
 <body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
 
     <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700">
-        <h1 class="text-2xl font-bold text-center text-cyan-400 mb-2">HỆ THỐNG TELEGRAM</h1>
-        <p class="text-center text-slate-400 text-sm mb-6">Nhập ID Telegram của bạn để tiếp tục</p>
-        
-        <div class="space-y-4">
-            <div>
-                <label class="block text-sm text-slate-400 mb-1">Telegram ID (Ví dụ: 123456789)</label>
-                <input type="text" id="teleIdInput" placeholder="Nhập ID Telegram..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-400 font-mono">
-            </div>
-            <button type="button" onclick="handleTelegramLogin()" class="w-full bg-cyan-600 hover:bg-cyan-500 font-bold py-3 rounded-xl transition shadow-lg">Vào Hệ Thống</button>
+        <h1 class="text-2xl font-bold text-center text-cyan-400 mb-6">HỆ THỐNG GET KEY</h1>
+
+        <div class="mb-6 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl p-4 text-center shadow-lg">
+            <p class="text-sm uppercase tracking-wider font-semibold opacity-90">Số dư hiện tại</p>
+            <p class="text-4xl font-extrabold mt-1"><span id="coinBalance">0.0</span> <span class="text-lg">COIN</span></p>
         </div>
-        
-        <div class="mt-6 text-center text-xs text-slate-500">
-            Dùng bot Telegram gõ lệnh <b class="text-cyan-400">/my</b> để lấy ID của bạn.
+
+        <div class="space-y-3 mb-6">
+            <button type="button" onclick="doLinkTask()" class="w-full bg-emerald-600 hover:bg-emerald-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
+                <span>🚀 Vượt Link Kiếm 0.5 Coin</span>
+            </button>
+
+            <button type="button" onclick="exchangeKey()" class="w-full bg-indigo-600 hover:bg-indigo-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
+                <span>🔑 Đổi Key (Giá: 2 Coin)</span>
+            </button>
+        </div>
+
+        <div class="bg-slate-900 rounded-xl p-4 border border-slate-700">
+            <h2 class="text-sm font-semibold text-slate-400 mb-2">Key Của Bạn:</h2>
+            <div class="flex items-center justify-between bg-slate-800 p-2 rounded-lg">
+                <input type="text" id="latestKey" readonly value="Chưa có key nào" class="bg-transparent w-full text-sm font-mono text-yellow-400 focus:outline-none">
+                <button type="button" onclick="copyKey()" class="bg-slate-700 hover:bg-slate-600 px-3 py-1 text-xs rounded-md transition">Sao chép</button>
+            </div>
         </div>
     </div>
 
@@ -41,40 +51,67 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Kiểm tra phiên đăng nhập sẵn
-        const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000;
-        let savedSession = JSON.parse(localStorage.getItem('ttoan_tele_session') || 'null');
-        if (savedSession && (Date.now() - savedSession.time < SESSION_DURATION)) {
-            window.location.href = 'getkey.html';
+        // Sử dụng một ID thiết bị lưu tạm trên trình duyệt để quản lý xu của riêng người đó
+        let deviceId = localStorage.getItem('ttoan_device_id');
+        if (!deviceId) {
+            deviceId = 'dev_' + Math.random().toString(36).substring(2, 10);
+            localStorage.setItem('ttoan_device_id', deviceId);
         }
 
-        async function handleTelegramLogin() {
-            const teleId = document.getElementById('teleIdInput').value.trim();
+        const userRef = db.ref('users/' + deviceId);
 
-            if (!teleId || isNaN(teleId)) {
-                alert('Vui lòng nhập ID Telegram hợp lệ (chỉ gồm các chữ số)!');
-                return;
+        // Lắng nghe dữ liệu thời gian thực từ Firebase
+        userRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                document.getElementById('coinBalance').innerText = (data.coins || 0.0).toFixed(1);
+                document.getElementById('latestKey').value = data.latestKey || 'Chưa có';
+            } else {
+                userRef.set({ coins: 0.0, latestKey: 'Chưa có' });
             }
+        });
 
-            try {
-                const userRef = db.ref('accounts/tele_' + teleId);
-                const snap = await userRef.get();
+        function doLinkTask() {
+            const baseUrl = window.location.origin + window.location.pathname.replace('index.html', '');
+            const targetUrl = `${baseUrl}complete.html?dev=${deviceId}`;
+            
+            const apiToken = "667da5e0512ac00cba52fb6f";
+            const link4mApiUrl = `https://link4m.co/st?api=${apiToken}&url=${encodeURIComponent(targetUrl)}`;
 
-                if (!snap.exists()) {
-                    // Nếu chưa có, tự động tạo tài khoản mới với 0 coin
-                    await userRef.set({
-                        teleId: teleId,
-                        coins: 0.0,
-                        latestKey: 'Chưa có',
-                        createdAt: Date.now()
-                    });
+            window.location.href = link4mApiUrl;
+        }
+
+        function exchangeKey() {
+            userRef.transaction((currentData) => {
+                if (!currentData) currentData = { coins: 0.0, latestKey: 'Chưa có' };
+                
+                if (currentData.coins < 2.0) {
+                    alert('Bạn cần ít nhất 2 Coin để đổi key! Hãy vượt thêm link.');
+                    return; 
                 }
 
-                localStorage.setItem('ttoan_tele_session', JSON.stringify({ teleId: teleId, time: Date.now() }));
-                window.location.href = 'getkey.html';
-            } catch (error) {
-                alert('Lỗi kết nối cơ sở dữ liệu!');
-            }
+                currentData.coins -= 2.0;
+                const newKey = 'TTOAN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+                currentData.latestKey = newKey;
+
+                db.ref('keys/' + newKey).set({
+                    used: false,
+                    createdAt: Date.now()
+                });
+
+                return currentData;
+            }, (error, committed) => {
+                if (committed) {
+                    alert('Đổi key thành công (-2 Coin)!');
+                }
+            });
+        }
+
+        function copyKey() {
+            const keyInput = document.getElementById('latestKey');
+            keyInput.select();
+            navigator.clipboard.writeText(keyInput.value);
+            alert('Đã sao chép key!');
         }
     </script>
 </body>
