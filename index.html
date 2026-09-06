@@ -3,81 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xác Nhận Vượt Link</title>
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background-color: #f4f4f9; color: #333; }
-        .container { max-width: 500px; margin: auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        h2 { color: #28a745; }
-        .error { color: red; }
-    </style>
+    <title>Hệ Thống Vượt Link Đổi Key - TToan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 </head>
-<body>
-    <div class="container">
-        <h2 id="title">Hệ Thống Vượt Link</h2>
-        <p id="status">Đang xử lý cộng quyền, vui lòng chờ trong giây lát...</p>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700">
+        <h1 class="text-2xl font-bold text-center text-cyan-400 mb-6">HỆ THỐNG VƯỢT LINK ĐỔI KEY</h1>
+        
+        <div class="mb-4 bg-slate-900 p-3 rounded-lg text-sm text-slate-400 flex justify-between items-center">
+            <span>ID Của Bạn:</span>
+            <span id="userIdDisplay" class="font-mono text-cyan-300 font-semibold">Đang tải...</span>
+        </div>
+
+        <div class="mb-6 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl p-4 text-center shadow-lg">
+            <p class="text-sm uppercase tracking-wider font-semibold opacity-90">Số dư hiện tại</p>
+            <p class="text-4xl font-extrabold mt-1"><span id="coinBalance">0.0</span> <span class="text-lg">COIN</span></p>
+        </div>
+
+        <div class="space-y-3 mb-6">
+            <!-- Nút Vượt Link qua Link4m (Kiếm 0.5 coin) -->
+            <button onclick="doLinkTask()" class="w-full bg-emerald-600 hover:bg-emerald-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
+                <span>🚀 Vượt Link Kiếm 0.5 Coin</span>
+            </button>
+
+            <!-- Nút Đổi Key (Tốn 1 coin) -->
+            <button onclick="exchangeKey()" class="w-full bg-indigo-600 hover:bg-indigo-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
+                <span>🔑 Đổi Key (Giá: 1 Coin)</span>
+            </button>
+        </div>
+
+        <div class="bg-slate-900 rounded-xl p-4 border border-slate-700">
+            <h2 class="text-sm font-semibold text-slate-400 mb-2">Key Của Bạn:</h2>
+            <div class="flex items-center justify-between bg-slate-800 p-2 rounded-lg">
+                <input type="text" id="latestKey" readonly value="Chưa có key nào" class="bg-transparent w-full text-sm font-mono text-yellow-400 focus:outline-none">
+                <button onclick="copyKey()" class="bg-slate-700 hover:bg-slate-600 px-3 py-1 text-xs rounded-md transition">Sao chép</button>
+            </div>
+        </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
+    <script>
         const firebaseConfig = {
-            apiKey: "AIzaSyBtFL-IArND-ACnhOdzdyzu9010KgVEd44",
-            authDomain: "mail-10p.firebaseapp.com",
-            databaseURL: "https://mail-10p-default-rtdb.firebaseio.com",
-            projectId: "mail-10p",
-            storageBucket: "mail-10p.firebasestorage.app",
-            messagingSenderId: "605076530883",
-            appId: "1:605076530883:web:2dfbeecdf5d4603c09a476",
-            measurementId: "G-S2WCFL4DMY"
+            apiKey: "AIzaSyAKJQwQpXNMN31QoN4UNBJt6rigrkoYk6I",
+            authDomain: "ttoan-like-bot.firebaseapp.com",
+            databaseURL: "https://ttoan-like-bot-default-rtdb.firebaseio.com/",
+            projectId: "ttoan-like-bot",
+            storageBucket: "ttoan-like-bot.firebasestorage.app",
+            messagingSenderId: "322115758267",
+            appId: "1:322115758267:web:157c58b911500f83bc619e",
+            measurementId: "G-15RMWQHBKX"
         };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        let userId = localStorage.getItem('ttoan_user_id');
+        if (!userId) {
+            userId = 'user_' + Math.random().toString(36).substring(2, 11);
+            localStorage.setItem('ttoan_user_id', userId);
+        }
+        document.getElementById('userIdDisplay').innerText = userId;
 
-        async function verifyBypass() {
-            const statusText = document.getElementById("status");
-            const titleText = document.getElementById("title");
-            
-            // Đọc trực tiếp chat_id từ thanh địa chỉ URL
-            const urlParams = new URLSearchParams(window.location.search);
-            let chatId = urlParams.get("chat_id");
-            
-            // Phòng hờ nếu link bị chuyển qua dạng hash (#)
-            if (!chatId && window.location.hash) {
-                chatId = window.location.hash.substring(1);
+        const userRef = db.ref('users/' + userId);
+
+        userRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const coins = data.coins || 0.0;
+                document.getElementById('coinBalance').innerText = coins.toFixed(1);
+                if (data.latestKey) {
+                    document.getElementById('latestKey').value = data.latestKey;
+                }
+            } else {
+                userRef.set({ coins: 0.0, latestKey: 'Chưa có' });
             }
+        });
 
-            if (!chatId) {
-                titleText.innerText = "Lỗi hệ thống!";
-                statusText.innerHTML = "❌ Không tìm thấy thông tin tài khoản.<br>Vui lòng bấm lại link từ bot Telegram.";
-                statusText.className = "error";
-                return;
-            }
+        // Hàm xử lý gọi API Link4m khi bấm vượt link
+        async function doLinkTask() {
+            const baseUrl = window.location.origin + window.location.pathname.replace('index.html', '');
+            const targetUrl = `${baseUrl}complete.html?uid=${userId}`;
+            
+            const apiToken = "667da5e0512ac00cba52fb6f";
+            const link4mApiUrl = `https://link4m.co/st?api=${apiToken}&url=${encodeURIComponent(targetUrl)}`;
 
             try {
-                const userRef = doc(db, "users", chatId);
-                const userDoc = await getDoc(userRef);
+                alert("Đang tạo link vượt, vui lòng đợi...");
+                const response = await fetch(link4mApiUrl);
+                const data = await response.json();
                 
-                let currentBypass = 0;
-                if (userDoc.exists()) {
-                    currentBypass = userDoc.data().bypass || 0;
+                if (data.status === "success" || data.shortenedUrl) {
+                    window.location.href = data.shortenedUrl;
+                } else {
+                    window.location.href = link4mApiUrl;
                 }
-
-                // Cộng trực tiếp 1 lượt vượt link vào Firebase cho đúng chat_id đó
-                await setDoc(userRef, { bypass: currentBypass + 1 }, { merge: true });
-
-                titleText.innerText = "Thành công!";
-                statusText.innerHTML = "✅ Vượt link thành công!<br>Bây giờ bạn có thể quay lại Telegram để sử dụng bot.";
             } catch (error) {
                 console.error("Lỗi:", error);
-                titleText.innerText = "Lỗi kết nối!";
-                statusText.innerHTML = "❌ Có lỗi xảy ra khi cập nhật hệ thống.";
-                statusText.className = "error";
+                window.location.href = link4mApiUrl;
             }
         }
 
-        verifyBypass();
+        // Hàm đổi key (Tốn 1 coin)
+        function exchangeKey() {
+            userRef.transaction((currentData) => {
+                if (!currentData) {
+                    currentData = { coins: 0.0, latestKey: 'Chưa có' };
+                }
+                
+                if (currentData.coins < 1.0) {
+                    alert('Bạn không đủ 1 coin để đổi key! Hãy vượt thêm link.');
+                    return; 
+                }
+
+                currentData.coins -= 1.0;
+                const newKey = 'TTOAN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+                currentData.latestKey = newKey;
+
+                db.ref('keys/' + newKey).set({
+                    used: false,
+                    owner: userId,
+                    createdAt: Date.now()
+                });
+
+                return currentData;
+            }, (error, committed) => {
+                if (error) {
+                    alert('Có lỗi xảy ra, vui lòng thử lại!');
+                } else if (committed) {
+                    alert('Đổi key thành công!');
+                }
+            });
+        }
+
+        function copyKey() {
+            const keyInput = document.getElementById('latestKey');
+            keyInput.select();
+            navigator.clipboard.writeText(keyInput.value);
+            alert('Đã sao chép key!');
+        }
     </script>
 </body>
 </html>
