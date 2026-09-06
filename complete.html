@@ -13,7 +13,6 @@
         <h1 id="statusText" class="text-xl font-bold text-cyan-400 mb-4">Đang cộng thưởng...</h1>
         <p class="text-slate-400 text-sm mb-6">Hệ thống đang ghi nhận 0.5 coin vào tài khoản của bạn.</p>
         
-        <!-- LƯU Ý TO NHƯ YÊU CẦU -->
         <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-xs font-semibold leading-relaxed">
             ⚠️ <b>LƯU Ý QUAN TRỌNG:</b> Vượt 2 lần liên tiếp xong đổi key, không sẽ bị mất coin vô cớ!
         </div>
@@ -48,7 +47,9 @@
                 if (committed) {
                     document.getElementById('statusText').innerText = "🎉 +0.5 Coin Thành Công!";
                     setTimeout(() => {
-                        window.location.href = 'index.html';
+                        // Quay lại trang chính sau khi cộng xu xong
+                        let mainPage = window.location.href.split('?')[0].replace('complete.html', 'index.html');
+                        window.location.href = mainPage;
                     }, 3500);
                 } else {
                     document.getElementById('statusText').innerText = "❌ Có lỗi xảy ra!";
