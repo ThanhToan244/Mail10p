@@ -16,6 +16,7 @@
         <div class="mb-6 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl p-4 text-center shadow-lg">
             <p class="text-sm uppercase tracking-wider font-semibold opacity-90">Số dư hiện tại</p>
             <p class="text-4xl font-extrabold mt-1"><span id="coinBalance">0.0</span> <span class="text-lg">COIN</span></p>
+            <p class="text-xs mt-1 opacity-70">Hôm nay: <span id="dailyUsage">0</span>/2 lượt</p>
         </div>
 
         <div class="space-y-3 mb-6">
@@ -24,6 +25,9 @@
             </button>
             <button type="button" onclick="exchangeKey()" class="w-full bg-indigo-600 hover:bg-indigo-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
                 <span>🔑 Đổi Key (Giá: 1 Coin)</span>
+            </button>
+            <button type="button" onclick="reloadData()" class="w-full bg-yellow-600 hover:bg-yellow-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
+                <span>🔄 Reload</span>
             </button>
         </div>
 
@@ -44,7 +48,7 @@
     </div>
 
     <script>
-        // ----- CẤU HÌNH FIREBASE -----
+        // ----- FIREBASE CONFIG -----
         const firebaseConfig = {
             apiKey: "AIzaSyAKJQwQpXNMN31QoN4UNBJt6rigrkoYk6I",
             authDomain: "ttoan-like-bot.firebaseapp.com",
@@ -67,6 +71,36 @@
 
         const userRef = db.ref('users/' + deviceId);
         const userKeysRef = db.ref('user_keys/' + deviceId);
+
+        // ----- GIỚI HẠN 2 LẦN/NGÀY (cho Vượt Link) -----
+        const DAILY_LIMIT = 2;
+        const USAGE_KEY = 'daily_usage';
+
+        function getDailyUsage() {
+            const today = new Date().toDateString();
+            let data = JSON.parse(localStorage.getItem(USAGE_KEY));
+            if (!data || data.date !== today) {
+                data = { date: today, count: 0 };
+                localStorage.setItem(USAGE_KEY, JSON.stringify(data));
+            }
+            return data.count;
+        }
+
+        function incrementUsage() {
+            const today = new Date().toDateString();
+            let data = JSON.parse(localStorage.getItem(USAGE_KEY));
+            if (!data || data.date !== today) {
+                data = { date: today, count: 0 };
+            }
+            data.count += 1;
+            localStorage.setItem(USAGE_KEY, JSON.stringify(data));
+            // Cập nhật hiển thị
+            document.getElementById('dailyUsage').innerText = data.count;
+        }
+
+        function canUse() {
+            return getDailyUsage() < DAILY_LIMIT;
+        }
 
         // ----- LẮNG NGHE DỮ LIỆU NGƯỜI DÙNG -----
         userRef.on('value', (snapshot) => {
@@ -133,12 +167,15 @@
             });
         });
 
-        // ----- HÀM VƯỢT LINK (ĐÃ SỬA) -----
+        // ----- HÀM VƯỢT LINK (có kiểm tra giới hạn) -----
         function doLinkTask() {
-            // Lấy đường dẫn thư mục chứa file hiện tại
+            if (!canUse()) {
+                alert('⚠️ Bạn đã kiếm đủ 1 coin hôm nay (2 lượt vượt link). Quay lại vào ngày mai!');
+                return;
+            }
+
             const path = window.location.pathname;
             const baseUrl = window.location.origin + path.substring(0, path.lastIndexOf('/') + 1);
-            // Tạo URL đích đến complete.html kèm deviceId
             const targetUrl = baseUrl + 'complete.html?dev=' + deviceId;
             
             const apiToken = "667da5e0512ac00cba52fb6f";
@@ -209,6 +246,31 @@
                 alert('Đã sao chép key!');
             }
         }
+
+        // ----- RELOAD (cập nhật hiển thị) -----
+        function reloadData() {
+            userRef.once('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    document.getElementById('coinBalance').innerText = (data.coins || 0.0).toFixed(1);
+                    document.getElementById('latestKey').value = data.latestKey || 'Chưa có';
+                }
+            });
+            userKeysRef.once('value', (snapshot) => {
+                // Listener đã cập nhật tự động, chỉ cần thông báo
+                alert('Đã làm mới dữ liệu!');
+            });
+            // Cập nhật số lượt dùng
+            document.getElementById('dailyUsage').innerText = getDailyUsage();
+        }
+
+        // ----- KHỞI TẠO HIỂN THỊ SỐ LƯỢT DÙNG BAN ĐẦU -----
+        document.getElementById('dailyUsage').innerText = getDailyUsage();
+
+        // ----- Nếu có tham số dev (từ link4m) thì cộng coin và tăng đếm -----
+        // (Phần này dành cho trường hợp index.html cũng nhận được dev, nhưng thường chỉ complete.html mới xử lý)
+        // Để an toàn, tôi để đoạn kiểm tra cả ở index.html nếu cần.
+        // Nhưng thực tế, complete.html sẽ xử lý và chuyển hướng về index, nên không cần.
     </script>
 </body>
 </html>
