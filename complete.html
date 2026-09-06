@@ -10,13 +10,14 @@
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
 
-    <!-- Giao diện giống hệt index.html -->
+    <!-- Giao diện y hệt index.html -->
     <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700">
         <h1 class="text-2xl font-bold text-center text-cyan-400 mb-6">HỆ THỐNG GET KEY</h1>
 
         <div class="mb-6 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl p-4 text-center shadow-lg">
             <p class="text-sm uppercase tracking-wider font-semibold opacity-90">Số dư hiện tại</p>
             <p class="text-4xl font-extrabold mt-1"><span id="coinBalance">0.0</span> <span class="text-lg">COIN</span></p>
+            <p class="text-xs mt-1 opacity-70">Hôm nay: <span id="dailyUsage">0</span>/2 lượt</p>
         </div>
 
         <div class="space-y-3 mb-6">
@@ -25,6 +26,9 @@
             </button>
             <button type="button" onclick="exchangeKey()" class="w-full bg-indigo-600 hover:bg-indigo-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
                 <span>🔑 Đổi Key (Giá: 1 Coin)</span>
+            </button>
+            <button type="button" onclick="reloadData()" class="w-full bg-yellow-600 hover:bg-yellow-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
+                <span>🔄 Reload</span>
             </button>
         </div>
 
@@ -45,7 +49,7 @@
     </div>
 
     <script>
-        // ----- CẤU HÌNH FIREBASE -----
+        // ----- FIREBASE CONFIG -----
         const firebaseConfig = {
             apiKey: "AIzaSyAKJQwQpXNMN31QoN4UNBJt6rigrkoYk6I",
             authDomain: "ttoan-like-bot.firebaseapp.com",
@@ -66,9 +70,42 @@
             localStorage.setItem('ttoan_device_id', deviceId);
         }
 
+        const userRef = db.ref('users/' + deviceId);
+        const userKeysRef = db.ref('user_keys/' + deviceId);
+
+        // ----- GIỚI HẠN 2 LẦN/NGÀY (cho Vượt Link) -----
+        const DAILY_LIMIT = 2;
+        const USAGE_KEY = 'daily_usage';
+
+        function getDailyUsage() {
+            const today = new Date().toDateString();
+            let data = JSON.parse(localStorage.getItem(USAGE_KEY));
+            if (!data || data.date !== today) {
+                data = { date: today, count: 0 };
+                localStorage.setItem(USAGE_KEY, JSON.stringify(data));
+            }
+            return data.count;
+        }
+
+        function incrementUsage() {
+            const today = new Date().toDateString();
+            let data = JSON.parse(localStorage.getItem(USAGE_KEY));
+            if (!data || data.date !== today) {
+                data = { date: today, count: 0 };
+            }
+            data.count += 1;
+            localStorage.setItem(USAGE_KEY, JSON.stringify(data));
+            document.getElementById('dailyUsage').innerText = data.count;
+        }
+
+        function canUse() {
+            return getDailyUsage() < DAILY_LIMIT;
+        }
+
         // ====== XỬ LÝ CỘNG COIN KHI CÓ THAM SỐ dev ======
         const urlParams = new URLSearchParams(window.location.search);
         const devId = urlParams.get('dev');
+
         if (devId) {
             const processedKey = 'coin_processed_' + devId;
             // Chỉ xử lý nếu chưa cộng trong phiên này
@@ -84,6 +121,8 @@
                 }, (error, committed) => {
                     if (committed) {
                         sessionStorage.setItem(processedKey, 'true');
+                        // 🔥 TĂNG ĐẾM SỐ LẦN SỬ DỤNG
+                        incrementUsage();
                         // Chuyển về index sau khi cộng coin
                         const path = window.location.pathname;
                         const baseUrl = window.location.origin + path.substring(0, path.lastIndexOf('/') + 1);
@@ -105,10 +144,7 @@
             }
         }
 
-        // ----- PHẦN CÒN LẠI (giống index) -----
-        const userRef = db.ref('users/' + deviceId);
-        const userKeysRef = db.ref('user_keys/' + deviceId);
-
+        // ----- PHẦN CÒN LẠI (giống index, bao gồm các hàm) -----
         userRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
@@ -174,39 +210,30 @@
 
         // Các hàm giống hệt index
         function doLinkTask() {
+            if (!canUse()) {
+                alert('⚠️ Bạn đã kiếm đủ 1 coin hôm nay (2 lượt vượt link). Quay lại vào ngày mai!');
+                return;
+            }
             const path = window.location.pathname;
             const baseUrl = window.location.origin + path.substring(0, path.lastIndexOf('/') + 1);
             const targetUrl = baseUrl + 'complete.html?dev=' + deviceId;
-            
             const apiToken = "667da5e0512ac00cba52fb6f";
             const link4mApiUrl = `https://link4m.co/st?api=${apiToken}&url=${encodeURIComponent(targetUrl)}`;
-            
             window.location.href = link4mApiUrl;
         }
 
         function exchangeKey() {
             userRef.transaction((currentData) => {
                 if (!currentData) currentData = { coins: 0.0, latestKey: 'Chưa có' };
-                
                 if (currentData.coins < 1.0) {
                     alert('Bạn cần ít nhất 1 Coin để đổi key! Hãy vượt thêm link.');
                     return; 
                 }
-
                 currentData.coins -= 1.0;
                 const newKey = 'TTOAN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
                 currentData.latestKey = newKey;
-
-                db.ref('keys/' + newKey).set({
-                    used: false,
-                    createdAt: Date.now()
-                });
-
-                db.ref('user_keys/' + deviceId + '/' + newKey).set({
-                    used: false,
-                    createdAt: Date.now()
-                });
-
+                db.ref('keys/' + newKey).set({ used: false, createdAt: Date.now() });
+                db.ref('user_keys/' + deviceId + '/' + newKey).set({ used: false, createdAt: Date.now() });
                 return currentData;
             }, (error, committed) => {
                 if (committed) {
@@ -243,6 +270,22 @@
                 alert('Đã sao chép key!');
             }
         }
+
+        function reloadData() {
+            userRef.once('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    document.getElementById('coinBalance').innerText = (data.coins || 0.0).toFixed(1);
+                    document.getElementById('latestKey').value = data.latestKey || 'Chưa có';
+                }
+            });
+            userKeysRef.once('value', (snapshot) => {
+                alert('Đã làm mới dữ liệu!');
+            });
+            document.getElementById('dailyUsage').innerText = getDailyUsage();
+        }
+
+        document.getElementById('dailyUsage').innerText = getDailyUsage();
     </script>
 </body>
 </html>
