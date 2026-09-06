@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Get Key & Vượt Link - TToan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700 relative">
+        
+        <!-- NÚT HỒ SƠ & ĐĂNG XUẤT MÀU ĐỎ -->
+        <div class="absolute top-4 right-4">
+            <button onclick="toggleProfileMenu()" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1 transition">
+                <span>👤 Hồ Sơ</span>
+            </button>
+            <div id="profileMenu" class="hidden absolute right-0 mt-2 w-36 bg-slate-900 border border-slate-700 rounded-lg shadow-lg overflow-hidden z-10">
+                <button onclick="handleLogout()" class="w-full text-left px-4 py-2 text-xs text-red-500 hover:bg-slate-800 font-semibold transition">🚪 Đăng xuất</button>
+            </div>
+        </div>
+
+        <h1 class="text-2xl font-bold text-center text-cyan-400 mb-6">HỆ THỐNG GET KEY</h1>
+
+        <div class="mb-4 bg-slate-900 p-3 rounded-lg text-sm text-slate-400">
+            <span>Tài khoản: <b id="usernameDisplay" class="text-cyan-300"></b></span>
+        </div>
+
+        <div class="mb-6 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl p-4 text-center shadow-lg">
+            <p class="text-sm uppercase tracking-wider font-semibold opacity-90">Số dư hiện tại</p>
+            <p class="text-4xl font-extrabold mt-1"><span id="coinBalance">0.0</span> <span class="text-lg">COIN</span></p>
+        </div>
+
+        <div class="space-y-3 mb-6">
+            <button type="button" onclick="doLinkTask()" class="w-full bg-emerald-600 hover:bg-emerald-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
+                <span>🚀 Vượt Link Kiếm 0.5 Coin</span>
+            </button>
+
+            <button type="button" onclick="exchangeKey()" class="w-full bg-indigo-600 hover:bg-indigo-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
+                <span>🔑 Đổi Key (Giá: 1 Coin)</span>
+            </button>
+        </div>
+
+        <div class="bg-slate-900 rounded-xl p-4 border border-slate-700">
+            <h2 class="text-sm font-semibold text-slate-400 mb-2">Key Của Bạn:</h2>
+            <div class="flex items-center justify-between bg-slate-800 p-2 rounded-lg">
+                <input type="text" id="latestKey" readonly value="Chưa có key nào" class="bg-transparent w-full text-sm font-mono text-yellow-400 focus:outline-none">
+                <button type="button" onclick="copyKey()" class="bg-slate-700 hover:bg-slate-600 px-3 py-1 text-xs rounded-md transition">Sao chép</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAKJQwQpXNMN31QoN4UNBJt6rigrkoYk6I",
+            authDomain: "ttoan-like-bot.firebaseapp.com",
+            databaseURL: "https://ttoan-like-bot-default-rtdb.firebaseio.com/",
+            projectId: "ttoan-like-bot",
+            storageBucket: "ttoan-like-bot.firebasestorage.app",
+            messagingSenderId: "322115758267",
+            appId: "1:322115758267:web:157c58b911500f83bc619e",
+            measurementId: "G-15RMWQHBKX"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Kiểm tra phiên đăng nhập 7 ngày
+        const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000;
+        let savedSession = JSON.parse(localStorage.getItem('ttoan_session') || 'null');
+
+        if (!savedSession || (Date.now() - savedSession.time > SESSION_DURATION)) {
+            localStorage.removeItem('ttoan_session');
+            window.location.href = 'index.html';
+        } else {
+            document.getElementById('usernameDisplay').innerText = savedSession.username;
+            
+            // Lắng nghe dữ liệu real-time
+            db.ref('accounts/' + savedSession.username).on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    document.getElementById('coinBalance').innerText = (data.coins || 0.0).toFixed(1);
+                    document.getElementById('latestKey').value = data.latestKey || 'Chưa có';
+                }
+            });
+        }
+
+        function toggleProfileMenu() {
+            const menu = document.getElementById('profileMenu');
+            menu.classList.toggle('hidden');
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('ttoan_session');
+            window.location.href = 'index.html';
+        }
+
+        function doLinkTask() {
+            const session = JSON.parse(localStorage.getItem('ttoan_session') || '{}');
+            const username = session.username;
+            const baseUrl = window.location.origin + window.location.pathname.replace('getkey.html', '');
+            const targetUrl = `${baseUrl}complete.html?user=${username}`;
+            
+            const apiToken = "667da5e0512ac00cba52fb6f";
+            const link4mApiUrl = `https://link4m.co/st?api=${apiToken}&url=${encodeURIComponent(targetUrl)}`;
+
+            window.location.href = link4mApiUrl;
+        }
+
+        function exchangeKey() {
+            const session = JSON.parse(localStorage.getItem('ttoan_session') || '{}');
+            const username = session.username;
+            const userRef = db.ref('accounts/' + username);
+
+            userRef.transaction((currentData) => {
+                if (!currentData) return;
+                
+                if (currentData.coins < 1.0) {
+                    alert('Bạn không đủ 1 coin để đổi key! Hãy vượt thêm link.');
+                    return; 
+                }
+
+                currentData.coins -= 1.0;
+                const newKey = 'TTOAN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+                currentData.latestKey = newKey;
+
+                db.ref('keys/' + newKey).set({
+                    used: false,
+                    owner: username,
+                    createdAt: Date.now()
+                });
+
+                return currentData;
+            }, (error, committed) => {
+                if (committed) {
+                    alert('Đổi key thành công!');
+                }
+            });
+        }
+
+        function copyKey() {
+            const keyInput = document.getElementById('latestKey');
+            keyInput.select();
+            navigator.clipboard.writeText(keyInput.value);
+            alert('Đã sao chép key!');
+        }
+    </script>
+</body>
+</html>
