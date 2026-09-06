@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hoàn Thành Vượt Link</title>
+    <title>Hoàn Thành Vượt Link - TToan</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
@@ -43,7 +43,7 @@
                 if (committed) {
                     document.getElementById('statusText').innerText = "🎉 +0.5 Coin Thành Công!";
                     setTimeout(() => {
-                        window.location.href = 'index.html';
+                        window.location.href = 'getkey.html'; // Tự động quay về trang getkey
                     }, 2000);
                 } else {
                     document.getElementById('statusText').innerText = "❌ Có lỗi xảy ra!";
