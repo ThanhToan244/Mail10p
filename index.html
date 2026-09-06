@@ -13,25 +13,21 @@
     <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700">
         <h1 class="text-2xl font-bold text-center text-cyan-400 mb-6">HỆ THỐNG GET KEY</h1>
 
-        <!-- SỐ DƯ COIN -->
         <div class="mb-6 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl p-4 text-center shadow-lg">
             <p class="text-sm uppercase tracking-wider font-semibold opacity-90">Số dư hiện tại</p>
             <p class="text-4xl font-extrabold mt-1"><span id="coinBalance">0.0</span> <span class="text-lg">COIN</span></p>
         </div>
 
-        <!-- CÁC NÚT THao TÁC -->
         <div class="space-y-3 mb-6">
             <button type="button" onclick="doLinkTask()" class="w-full bg-emerald-600 hover:bg-emerald-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
                 <span>🚀 Vượt Link Kiếm 0.5 Coin</span>
             </button>
 
-            <!-- Đã sửa giá thành 1 Coin -->
             <button type="button" onclick="exchangeKey()" class="w-full bg-indigo-600 hover:bg-indigo-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
                 <span>🔑 Đổi Key (Giá: 1 Coin)</span>
             </button>
         </div>
 
-        <!-- KEY GẦN NHẤT ĐỂ COPY NHANH -->
         <div class="bg-slate-900 rounded-xl p-4 border border-slate-700 mb-6">
             <h2 class="text-sm font-semibold text-slate-400 mb-2">Key Gần Nhất:</h2>
             <div class="flex items-center justify-between bg-slate-800 p-2 rounded-lg">
@@ -40,7 +36,6 @@
             </div>
         </div>
 
-        <!-- LỊCH SỬ KEY & TRẠNG THÁI -->
         <div class="bg-slate-900 rounded-xl p-4 border border-slate-700">
             <h2 class="text-sm font-semibold text-slate-400 mb-3">📜 Lịch Sử & Trạng Thái Key:</h2>
             <div id="keyListContainer" class="space-y-2 max-h-48 overflow-y-auto pr-1">
@@ -70,7 +65,7 @@
         }
 
         const userRef = db.ref('users/' + deviceId);
-        const userKeysRef = db.ref('user_keys/' + deviceId); // Nơi lưu danh sách key riêng của thiết bị này
+        const userKeysRef = db.ref('user_keys/' + deviceId);
 
         userRef.on('value', (snapshot) => {
             const data = snapshot.val();
@@ -82,7 +77,6 @@
             }
         });
 
-        // Lắng nghe danh sách key của user để hiển thị lịch sử màu sắc và nút xóa
         userKeysRef.on('value', (snapshot) => {
             const container = document.getElementById('keyListContainer');
             container.innerHTML = '';
@@ -93,25 +87,20 @@
                 return;
             }
 
-            // Duyệt qua từng key đã đổi
             Object.keys(keysData).forEach((keyStr) => {
                 const keyInfo = keysData[keyStr];
-                const isUsed = keyInfo.used; // true: đã dùng, false: còn dùng được
+                const isUsed = keyInfo.used;
 
-                // Tạo dòng hiển thị: Trái là Key, Phải là Màu sắc + Nút xóa (nếu đã dùng)
                 const rowDiv = document.createElement('div');
                 rowDiv.className = "flex items-center justify-between bg-slate-800 p-2.5 rounded-lg text-xs font-mono";
 
-                // Phần bên trái: Tên Key
                 const leftPart = document.createElement('span');
                 leftPart.className = "text-cyan-300 font-bold truncate max-w-[140px]";
                 leftPart.innerText = keyStr;
 
-                // Phần bên phải: Trạng thái màu sắc (Xanh/Đỏ) + Nút Xóa thùng rác
                 const rightPart = document.createElement('div');
                 rightPart.className = "flex items-center space-x-2";
 
-                // Thẻ hiển thị màu trạng thái
                 const statusBadge = document.createElement('span');
                 if (isUsed) {
                     statusBadge.className = "bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded text-[10px] font-semibold";
@@ -122,7 +111,6 @@
                 }
                 rightPart.appendChild(statusBadge);
 
-                // Nếu key ĐÃ SỬ DỤNG thì hiển thị nút Xóa (thùng rác)
                 if (isUsed) {
                     const deleteBtn = document.createElement('button');
                     deleteBtn.className = "bg-red-600/30 hover:bg-red-600 text-red-300 hover:text-white p-1 rounded transition";
@@ -160,7 +148,6 @@
             userRef.transaction((currentData) => {
                 if (!currentData) currentData = { coins: 0.0, latestKey: 'Chưa có' };
                 
-                // Đã đổi giá yêu cầu thành 1 Coin
                 if (currentData.coins < 1.0) {
                     alert('Bạn cần ít nhất 1 Coin để đổi key! Hãy vượt thêm link.');
                     return; 
@@ -170,13 +157,11 @@
                 const newKey = 'TTOAN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
                 currentData.latestKey = newKey;
 
-                // Lưu vào kho tổng của hệ thống (để Bot Telegram check)
                 db.ref('keys/' + newKey).set({
                     used: false,
                     createdAt: Date.now()
                 });
 
-                // Lưu vào lịch sử riêng của thiết bị để quản lý màu sắc giao diện
                 db.ref('user_keys/' + deviceId + '/' + newKey).set({
                     used: false,
                     createdAt: Date.now()
@@ -190,12 +175,9 @@
             });
         }
 
-        // Hàm xóa key đã dùng khỏi danh sách lịch sử của thiết bị
         function deleteKey(keyStr) {
             if (confirm(`Bạn có chắc chắn muốn xóa key ${keyStr} khỏi lịch sử không?`)) {
-                db.ref('user_keys/' + deviceId + '/' + keyStr).remove().then(() => {
-                    // Nếu muốn xóa luôn bên bảng tổng hệ thống (tùy chọn, ở đây chỉ xóa ở giao diện user)
-                });
+                db.ref('user_keys/' + deviceId + '/' + keyStr).remove();
             }
         }
 
