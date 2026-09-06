@@ -3,37 +3,303 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Vượt Link Đổi Key - TToan</title>
+    <title>Hệ Thống Đổi Key Like FF - TToan</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
 
-    <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700">
-        <h1 class="text-2xl font-bold text-center text-cyan-400 mb-6">HỆ THỐNG VƯỢT LINK ĐỔI KEY</h1>
+    <!-- MÀN HÌNH CHẶN KHI PHÁT HIỆN FAKE IP / VPN -->
+    <script>
+        (async function checkVPN() {
+            try {
+                // Sử dụng ipapi.co để check thông tin mạng và phát triển cơ chế chống proxy/vpn/hosting
+                const res = await fetch('https://ipapi.co/json/');
+                const data = await res.json();
+                
+                window.userIP = data.ip || "unknown";
+                
+                // Nếu phát hiện IP thuộc dạng Data Center / Hosting / Proxy (Cơ chế chống fake ip cơ bản)
+                // Hoặc bạn có thể thêm logic check nếu cần
+                if (!window.userIP || window.userIP === "unknown") {
+                    document.body.innerHTML = "<div style='color:red; text-align:center; margin-top:20vh; font-family:sans-serif;'><h2>❌ Truy cập bị từ chối! Phát hiện sử dụng ẩn danh / Proxy / VPN.</h2></div>";
+                    throw new Error("Blocked");
+                }
+            } catch (e) {
+                console.log("Kiểm tra IP hoàn tất hoặc lỗi kết nối.");
+            }
+        })();
+    </script>
+
+    <!-- CONTAINER CHÍNH -->
+    <div id="appContainer" class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700">
+        <h1 class="text-2xl font-bold text-center text-cyan-400 mb-6">HỆ THỐNG ĐỔI KEY TTOAN</h1>
         
-        <div class="mb-4 bg-slate-900 p-3 rounded-lg text-sm text-slate-400 flex justify-between items-center">
-            <span>ID Của Bạn:</span>
-            <span id="userIdDisplay" class="font-mono text-cyan-300 font-semibold">Đang tải...</span>
+        <!-- KHU VỰC AUTH (ĐĂNG NHẬP / ĐĂNG KÝ) -->
+        <div id="authSection">
+            <div class="flex border-b border-slate-700 mb-4">
+                <button onclick="switchTab('login')" id="tabLogin" class="w-1/2 py-2 font-bold text-cyan-400 border-b-2 border-cyan-400">Đăng Nhập</button>
+                <button onclick="switchTab('register')" id="tabRegister" class="w-1/2 py-2 font-bold text-slate-400">Đăng Ký</button>
+            </div>
+
+            <!-- Form Đăng Nhập -->
+            <div id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">Tên đăng nhập</label>
+                    <input type="text" id="loginUser" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-400">
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">Mật khẩu</label>
+                    <input type="password" id="loginPass" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-400">
+                </div>
+                <button onclick="handleLogin()" class="w-full bg-cyan-600 hover:bg-cyan-500 font-bold py-3 rounded-xl transition">Đăng Nhập</button>
+            </div>
+
+            <!-- Form Đăng Ký -->
+            <div id="registerForm" class="space-y-3 hidden">
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">Tên đăng nhập</label>
+                    <input type="text" id="regUser" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-400">
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">Mật khẩu</label>
+                    <input type="password" id="regPass" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-400">
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">Xác nhận mật khẩu</label>
+                    <input type="password" id="regPassConfirm" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-400">
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">ID Telegram</label>
+                    <input type="text" id="regTeleId" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-400">
+                </div>
+                <button onclick="handleRegister()" class="w-full bg-emerald-600 hover:bg-emerald-500 font-bold py-3 rounded-xl transition mt-2">Đăng Ký Tài Khoản</button>
+            </div>
         </div>
 
-        <div class="mb-6 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl p-4 text-center shadow-lg">
-            <p class="text-sm uppercase tracking-wider font-semibold opacity-90">Số dư hiện tại</p>
-            <p class="text-4xl font-extrabold mt-1"><span id="coinBalance">0.0</span> <span class="text-lg">COIN</span></p>
-        </div>
+        <!-- KHU VỰC DASHBOARD (HIỂN THỊ SAU KHI ĐĂNG NHẬP THÀNH CÔNG) -->
+        <div id="dashboardSection" class="hidden">
+            <div class="mb-4 bg-slate-900 p-3 rounded-lg text-sm text-slate-400 flex justify-between items-center">
+                <span>Xin chào: <b id="usernameDisplay" class="text-cyan-300"></b></span>
+                <button onclick="handleLogout()" class="text-xs text-red-400 hover:underline">Đăng xuất</button>
+            </div>
 
-        <div class="space-y-3 mb-6">
-            <!-- Nút Vượt Link qua Link4m (Kiếm 0.5 coin) -->
-            <button onclick="doLinkTask()" class="w-full bg-emerald-600 hover:bg-emerald-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
-                <span>🚀 Vượt Link Kiếm 0.5 Coin</span>
-            </button>
+            <div class="mb-6 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl p-4 text-center shadow-lg">
+                <p class="text-sm uppercase tracking-wider font-semibold opacity-90">Số dư hiện tại</p>
+                <p class="text-4xl font-extrabold mt-1"><span id="coinBalance">0.0</span> <span class="text-lg">COIN</span></p>
+            </div>
 
-            <!-- Nút Đổi Key (Tốn 1 coin) -->
-            <button onclick="exchangeKey()" class="w-full bg-indigo-600 hover:bg-indigo-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
-                <span>🔑 Đổi Key (Giá: 1 Coin)</span>
-            </button>
+            <div class="space-y-3 mb-6">
+                <button onclick="doLinkTask()" class="w-full bg-emerald-600 hover:bg-emerald-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
+                    <span>🚀 Vượt Link Kiếm 0.5 Coin</span>
+                </button>
+
+                <button onclick="exchangeKey()" class="w-full bg-indigo-600 hover:bg-indigo-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
+                    <span>🔑 Đổi Key (Giá: 1 Coin)</span>
+                </button>
+            </div>
+
+            <div class="bg-slate-900 rounded-xl p-4 border border-slate-700">
+                <h2 class="text-sm font-semibold text-slate-400 mb-2">Key Của Bạn:</h2>
+                <div class="flex items-center justify-between bg-slate-800 p-2 rounded-lg">
+                    <input type="text" id="latestKey" readonly value="Chưa có key nào" class="bg-transparent w-full text-sm font-mono text-yellow-400 focus:outline-none">
+                    <button onclick="copyKey()" class="bg-slate-700 hover:bg-slate-600 px-3 py-1 text-xs rounded-md transition">Sao chép</button>
+                </div>
+            </div>
         </div>
+    </div>
+
+    <!-- SCRIPT LOGIC FIREBASE & AUTH & IP CHECK -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAKJQwQpXNMN31QoN4UNBJt6rigrkoYk6I",
+            authDomain: "ttoan-like-bot.firebaseapp.com",
+            databaseURL: "https://ttoan-like-bot-default-rtdb.firebaseio.com/",
+            projectId: "ttoan-like-bot",
+            storageBucket: "ttoan-like-bot.firebasestorage.app",
+            messagingSenderId: "322115758267",
+            appId: "1:322115758267:web:157c58b911500f83bc619e",
+            measurementId: "G-15RMWQHBKX"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let currentUsername = localStorage.getItem('ttoan_logged_user');
+
+        if (currentUsername) {
+            showDashboard(currentUsername);
+        }
+
+        function switchTab(tab) {
+            if (tab === 'login') {
+                document.getElementById('loginForm').classList.remove('hidden');
+                document.getElementById('registerForm').classList.add('hidden');
+                document.getElementById('tabLogin').className = "w-1/2 py-2 font-bold text-cyan-400 border-b-2 border-cyan-400";
+                document.getElementById('tabRegister').className = "w-1/2 py-2 font-bold text-slate-400";
+            } else {
+                document.getElementById('loginForm').classList.add('hidden');
+                document.getElementById('registerForm').classList.remove('hidden');
+                document.getElementById('tabRegister').className = "w-1/2 py-2 font-bold text-cyan-400 border-b-2 border-cyan-400";
+                document.getElementById('tabLogin').className = "w-1/2 py-2 font-bold text-slate-400";
+            }
+        }
+
+        // ĐĂNG KÝ TÀI KHOẢN (Giới hạn 1 IP tạo 1 acc trong 1 ngày)
+        async function handleRegister() {
+            const user = document.getElementById('regUser').value.trim();
+            const pass = document.getElementById('regPass').value;
+            const passConfirm = document.getElementById('regPassConfirm').value;
+            const teleId = document.getElementById('regTeleId').value.trim();
+
+            if (!user || !pass || !passConfirm || !teleId) {
+                alert('Vui lòng điền đầy đủ tất cả các thông tin!');
+                return;
+            }
+
+            if (pass !== passConfirm) {
+                alert('Mật khẩu xác nhận không khớp!');
+                return;
+            }
+
+            const ip = window.userIP || "unknown_ip";
+            const today = new Date().toISOString().split('T')[0]; // Định dạng YYYY-MM-DD
+
+            // Kiểm tra IP đã đăng ký hôm nay chưa
+            const ipRef = db.ref('ip_logs/' + ip.replace(/\./g, '_') + '_' + today);
+            const ipSnap = await ipRef.get();
+
+            if (ipSnap.exists()) {
+                alert('Mỗi IP chỉ được phép đăng ký 1 tài khoản trong 1 ngày!');
+                return;
+            }
+
+            // Kiểm tra tên đăng nhập đã tồn tại chưa
+            const userRef = db.ref('accounts/' + user);
+            const userSnap = await userRef.get();
+
+            if (userSnap.exists()) {
+                alert('Tên đăng nhập này đã tồn tại!');
+                return;
+            }
+
+            // Lưu tài khoản mới lên Firebase
+            await userRef.set({
+                password: pass,
+                telegramId: teleId,
+                coins: 0.0,
+                latestKey: 'Chưa có',
+                createdAt: Date.now()
+            });
+
+            // Ghi nhận IP đã tạo trong ngày hôm nay
+            await ipRef.set({ username: user, time: Date.now() });
+
+            alert('Đăng ký thành công! Hãy đăng nhập.');
+            switchTab('login');
+        }
+
+        // ĐĂNG NHẬP
+        async function handleLogin() {
+            const user = document.getElementById('loginUser').value.trim();
+            const pass = document.getElementById('loginPass').value;
+
+            if (!user || !pass) {
+                alert('Vui lòng nhập tên đăng nhập và mật khẩu!');
+                return;
+            }
+
+            const userRef = db.ref('accounts/' + user);
+            const snap = await userRef.get();
+
+            if (!snap.exists()) {
+                alert('Tên đăng nhập không tồn tại!');
+                return;
+            }
+
+            const data = snap.val();
+            if (data.password !== pass) {
+                alert('Mật khẩu không chính xác!');
+                return;
+            }
+
+            localStorage.setItem('ttoan_logged_user', user);
+            showDashboard(user);
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('ttoan_logged_user');
+            location.reload();
+        }
+
+        function showDashboard(username) {
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.remove('hidden');
+            document.getElementById('usernameDisplay').innerText = username;
+
+            // Lắng nghe dữ liệu real-time của user
+            db.ref('accounts/' + username).on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    document.getElementById('coinBalance').innerText = (data.coins || 0.0).toFixed(1);
+                    document.getElementById('latestKey').value = data.latestKey || 'Chưa có';
+                }
+            });
+        }
+
+        // VƯỢT LINK LINK4M KIẾM 0.5 COIN
+        function doLinkTask() {
+            const username = localStorage.getItem('ttoan_logged_user');
+            const baseUrl = window.location.origin + window.location.pathname.replace('index.html', '');
+            const targetUrl = `${baseUrl}complete.html?user=${username}`;
+            
+            const apiToken = "667da5e0512ac00cba52fb6f";
+            const link4mApiUrl = `https://link4m.co/st?api=${apiToken}&url=${encodeURIComponent(targetUrl)}`;
+
+            window.location.href = link4mApiUrl;
+        }
+
+        // ĐỔI KEY (TỐN 1 COIN)
+        function exchangeKey() {
+            const username = localStorage.getItem('ttoan_logged_user');
+            const userRef = db.ref('accounts/' + username);
+
+            userRef.transaction((currentData) => {
+                if (!currentData) return;
+                
+                if (currentData.coins < 1.0) {
+                    alert('Bạn không đủ 1 coin để đổi key! Hãy vượt thêm link.');
+                    return; 
+                }
+
+                currentData.coins -= 1.0;
+                const newKey = 'TTOAN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+                currentData.latestKey = newKey;
+
+                // Lưu key vào danh sách chung để bot Telegram xác thực
+                db.ref('keys/' + newKey).set({
+                    used: false,
+                    owner: username,
+                    createdAt: Date.now()
+                });
+
+                return currentData;
+            }, (error, committed) => {
+                if (committed) {
+                    alert('Đổi key thành công!');
+                }
+            });
+        }
+
+        function copyKey() {
+            const keyInput = document.getElementById('latestKey');
+            keyInput.select();
+            navigator.clipboard.writeText(keyInput.value);
+            alert('Đã sao chép key!');
+        }
+    </script>
+</body>
+</html>
 
         <div class="bg-slate-900 rounded-xl p-4 border border-slate-700">
             <h2 class="text-sm font-semibold text-slate-400 mb-2">Key Của Bạn:</h2>
