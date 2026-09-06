@@ -11,26 +11,29 @@
 <body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
 
     <!-- MÀN HÌNH CHẶN KHI PHÁT HIỆN FAKE IP / VPN -->
-    <script>
-        (async function checkVPN() {
-            try {
-                // Sử dụng ipapi.co để check thông tin mạng và phát triển cơ chế chống proxy/vpn/hosting
-                const res = await fetch('https://ipapi.co/json/');
-                const data = await res.json();
-                
-                window.userIP = data.ip || "unknown";
-                
-                // Nếu phát hiện IP thuộc dạng Data Center / Hosting / Proxy (Cơ chế chống fake ip cơ bản)
-                // Hoặc bạn có thể thêm logic check nếu cần
-                if (!window.userIP || window.userIP === "unknown") {
-                    document.body.innerHTML = "<div style='color:red; text-align:center; margin-top:20vh; font-family:sans-serif;'><h2>❌ Truy cập bị từ chối! Phát hiện sử dụng ẩn danh / Proxy / VPN.</h2></div>";
-                    throw new Error("Blocked");
-                }
-            } catch (e) {
-                console.log("Kiểm tra IP hoàn tất hoặc lỗi kết nối.");
+<script>
+    (async function checkVPN() {
+        try {
+            const res = await fetch('https://ipapi.co/json/');
+            const data = await res.json();
+            
+            window.userIP = data.ip || "unknown";
+            
+            // Chỉ chặn khi API trả về rõ ràng là các mạng hosting/datacenter lớn (như AWS, DigitalOcean, Cloudflare...)
+            // Bỏ qua hoàn toàn các mạng di động hoặc nhà mạng thông thường
+            const org = (data.org || "").toLowerCase();
+            const type = (data.type || "").toLowerCase();
+            
+            if (org.includes('hosting') || org.includes('datacenter') || org.includes('ovh') || type === 'hosting') {
+                document.body.innerHTML = "<div style='color:red; text-align:center; margin-top:20vh; font-family:sans-serif;'><h2>❌ Truy cập bị từ chối! Phát hiện sử dụng Server / Proxy / VPN.</h2></div>";
             }
-        })();
-    </script>
+        } catch (e) {
+            // Nếu lỗi mạng hoặc không gọi được API check IP thì vẫn cho phép qua để không bị kẹt người dùng thật
+            console.log("Bỏ qua kiểm tra IP do lỗi kết nối.");
+        }
+    })();
+</script>
+
 
     <!-- CONTAINER CHÍNH -->
     <div id="appContainer" class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700">
