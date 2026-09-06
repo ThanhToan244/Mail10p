@@ -10,6 +10,7 @@
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
 
+    <!-- Giao diện giống hệt index.html -->
     <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700">
         <h1 class="text-2xl font-bold text-center text-cyan-400 mb-6">HỆ THỐNG GET KEY</h1>
 
@@ -22,7 +23,6 @@
             <button type="button" onclick="doLinkTask()" class="w-full bg-emerald-600 hover:bg-emerald-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
                 <span>🚀 Vượt Link Kiếm 0.5 Coin</span>
             </button>
-
             <button type="button" onclick="exchangeKey()" class="w-full bg-indigo-600 hover:bg-indigo-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
                 <span>🔑 Đổi Key (Giá: 1 Coin)</span>
             </button>
@@ -45,6 +45,7 @@
     </div>
 
     <script>
+        // ----- CẤU HÌNH FIREBASE -----
         const firebaseConfig = {
             apiKey: "AIzaSyAKJQwQpXNMN31QoN4UNBJt6rigrkoYk6I",
             authDomain: "ttoan-like-bot.firebaseapp.com",
@@ -58,12 +59,53 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        // ----- DEVICE ID -----
         let deviceId = localStorage.getItem('ttoan_device_id');
         if (!deviceId) {
             deviceId = 'dev_' + Math.random().toString(36).substring(2, 10);
             localStorage.setItem('ttoan_device_id', deviceId);
         }
 
+        // ====== XỬ LÝ CỘNG COIN KHI CÓ THAM SỐ dev ======
+        const urlParams = new URLSearchParams(window.location.search);
+        const devId = urlParams.get('dev');
+        if (devId) {
+            const processedKey = 'coin_processed_' + devId;
+            // Chỉ xử lý nếu chưa cộng trong phiên này
+            if (!sessionStorage.getItem(processedKey)) {
+                const ref = db.ref('users/' + devId);
+                ref.transaction((current) => {
+                    if (current) {
+                        current.coins = (current.coins || 0) + 0.5;
+                    } else {
+                        current = { coins: 0.5, latestKey: 'Chưa có' };
+                    }
+                    return current;
+                }, (error, committed) => {
+                    if (committed) {
+                        sessionStorage.setItem(processedKey, 'true');
+                        // Chuyển về index sau khi cộng coin
+                        const path = window.location.pathname;
+                        const baseUrl = window.location.origin + path.substring(0, path.lastIndexOf('/') + 1);
+                        window.location.href = baseUrl + 'index.html';
+                    } else {
+                        console.error('Lỗi cộng coin:', error);
+                        alert('Có lỗi xảy ra khi cộng coin, vui lòng thử lại sau.');
+                        // Vẫn chuyển về index
+                        const path = window.location.pathname;
+                        const baseUrl = window.location.origin + path.substring(0, path.lastIndexOf('/') + 1);
+                        window.location.href = baseUrl + 'index.html';
+                    }
+                });
+            } else {
+                // Đã xử lý rồi thì chuyển thẳng về index
+                const path = window.location.pathname;
+                const baseUrl = window.location.origin + path.substring(0, path.lastIndexOf('/') + 1);
+                window.location.href = baseUrl + 'index.html';
+            }
+        }
+
+        // ----- PHẦN CÒN LẠI (giống index) -----
         const userRef = db.ref('users/' + deviceId);
         const userKeysRef = db.ref('user_keys/' + deviceId);
 
@@ -130,17 +172,15 @@
             });
         });
 
+        // Các hàm giống hệt index
         function doLinkTask() {
-            let currentPath = window.location.href.split('?')[0];
-            if (!currentPath.endsWith('.html')) {
-                if (!currentPath.endsWith('/')) currentPath += '/';
-                currentPath += 'index.html';
-            }
-            const targetUrl = currentPath.replace('index.html', 'complete.html') + `?dev=${deviceId}`;
+            const path = window.location.pathname;
+            const baseUrl = window.location.origin + path.substring(0, path.lastIndexOf('/') + 1);
+            const targetUrl = baseUrl + 'complete.html?dev=' + deviceId;
             
             const apiToken = "667da5e0512ac00cba52fb6f";
             const link4mApiUrl = `https://link4m.co/st?api=${apiToken}&url=${encodeURIComponent(targetUrl)}`;
-
+            
             window.location.href = link4mApiUrl;
         }
 
@@ -171,6 +211,9 @@
             }, (error, committed) => {
                 if (committed) {
                     alert('Đổi key thành công (-1 Coin)!');
+                } else if (error) {
+                    console.error('Transaction failed:', error);
+                    alert('Có lỗi xảy ra, vui lòng thử lại.');
                 }
             });
         }
@@ -188,8 +231,17 @@
                 return;
             }
             keyInput.select();
-            navigator.clipboard.writeText(keyInput.value);
-            alert('Đã sao chép key!');
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(keyInput.value).then(() => {
+                    alert('Đã sao chép key!');
+                }).catch(() => {
+                    document.execCommand('copy');
+                    alert('Đã sao chép key!');
+                });
+            } else {
+                document.execCommand('copy');
+                alert('Đã sao chép key!');
+            }
         }
     </script>
 </body>
