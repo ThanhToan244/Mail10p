@@ -22,7 +22,6 @@
             <button type="button" onclick="doLinkTask()" class="w-full bg-emerald-600 hover:bg-emerald-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
                 <span>🚀 Vượt Link Kiếm 0.5 Coin</span>
             </button>
-
             <button type="button" onclick="exchangeKey()" class="w-full bg-indigo-600 hover:bg-indigo-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
                 <span>🔑 Đổi Key (Giá: 1 Coin)</span>
             </button>
@@ -45,6 +44,7 @@
     </div>
 
     <script>
+        // ----- CẤU HÌNH FIREBASE -----
         const firebaseConfig = {
             apiKey: "AIzaSyAKJQwQpXNMN31QoN4UNBJt6rigrkoYk6I",
             authDomain: "ttoan-like-bot.firebaseapp.com",
@@ -58,6 +58,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        // ----- DEVICE ID -----
         let deviceId = localStorage.getItem('ttoan_device_id');
         if (!deviceId) {
             deviceId = 'dev_' + Math.random().toString(36).substring(2, 10);
@@ -67,6 +68,7 @@
         const userRef = db.ref('users/' + deviceId);
         const userKeysRef = db.ref('user_keys/' + deviceId);
 
+        // ----- LẮNG NGHE DỮ LIỆU NGƯỜI DÙNG -----
         userRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
@@ -77,6 +79,7 @@
             }
         });
 
+        // ----- LẮNG NGHE DANH SÁCH KEY -----
         userKeysRef.on('value', (snapshot) => {
             const container = document.getElementById('keyListContainer');
             container.innerHTML = '';
@@ -130,20 +133,21 @@
             });
         });
 
+        // ----- HÀM VƯỢT LINK (ĐÃ SỬA) -----
         function doLinkTask() {
-            let currentPath = window.location.href.split('?')[0];
-            if (!currentPath.endsWith('.html')) {
-                if (!currentPath.endsWith('/')) currentPath += '/';
-                currentPath += 'index.html';
-            }
-            const targetUrl = currentPath.replace('index.html', 'complete.html') + `?dev=${deviceId}`;
+            // Lấy đường dẫn thư mục chứa file hiện tại
+            const path = window.location.pathname;
+            const baseUrl = window.location.origin + path.substring(0, path.lastIndexOf('/') + 1);
+            // Tạo URL đích đến complete.html kèm deviceId
+            const targetUrl = baseUrl + 'complete.html?dev=' + deviceId;
             
             const apiToken = "667da5e0512ac00cba52fb6f";
             const link4mApiUrl = `https://link4m.co/st?api=${apiToken}&url=${encodeURIComponent(targetUrl)}`;
-
+            
             window.location.href = link4mApiUrl;
         }
 
+        // ----- ĐỔI KEY -----
         function exchangeKey() {
             userRef.transaction((currentData) => {
                 if (!currentData) currentData = { coins: 0.0, latestKey: 'Chưa có' };
@@ -171,16 +175,21 @@
             }, (error, committed) => {
                 if (committed) {
                     alert('Đổi key thành công (-1 Coin)!');
+                } else if (error) {
+                    console.error('Transaction failed:', error);
+                    alert('Có lỗi xảy ra, vui lòng thử lại.');
                 }
             });
         }
 
+        // ----- XÓA KEY -----
         function deleteKey(keyStr) {
             if (confirm(`Bạn có chắc chắn muốn xóa key ${keyStr} khỏi lịch sử không?`)) {
                 db.ref('user_keys/' + deviceId + '/' + keyStr).remove();
             }
         }
 
+        // ----- SAO CHÉP KEY -----
         function copyKey() {
             const keyInput = document.getElementById('latestKey');
             if (keyInput.value === 'Chưa có' || keyInput.value === 'Chưa có key nào') {
@@ -188,8 +197,17 @@
                 return;
             }
             keyInput.select();
-            navigator.clipboard.writeText(keyInput.value);
-            alert('Đã sao chép key!');
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(keyInput.value).then(() => {
+                    alert('Đã sao chép key!');
+                }).catch(() => {
+                    document.execCommand('copy');
+                    alert('Đã sao chép key!');
+                });
+            } else {
+                document.execCommand('copy');
+                alert('Đã sao chép key!');
+            }
         }
     </script>
 </body>
