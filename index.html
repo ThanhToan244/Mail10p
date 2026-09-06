@@ -51,7 +51,6 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Sử dụng một ID thiết bị lưu tạm trên trình duyệt để quản lý xu của riêng người đó
         let deviceId = localStorage.getItem('ttoan_device_id');
         if (!deviceId) {
             deviceId = 'dev_' + Math.random().toString(36).substring(2, 10);
@@ -60,7 +59,6 @@
 
         const userRef = db.ref('users/' + deviceId);
 
-        // Lắng nghe dữ liệu thời gian thực từ Firebase
         userRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
@@ -72,10 +70,17 @@
         });
 
         function doLinkTask() {
-            const baseUrl = window.location.origin + window.location.pathname.replace('index.html', '');
-            const targetUrl = `${baseUrl}complete.html?dev=${deviceId}`;
+            // Tự động lấy URL hiện tại của website (đã deploy lên hosting)
+            let currentPath = window.location.href.split('?')[0];
+            if (!currentPath.endsWith('.html')) {
+                if (!currentPath.endsWith('/')) currentPath += '/';
+                currentPath += 'index.html';
+            }
+            const targetUrl = currentPath.replace('index.html', 'complete.html') + `?dev=${deviceId}`;
             
             const apiToken = "667da5e0512ac00cba52fb6f";
+            
+            // Mã hóa chuẩn URL đích để Link4m không báo lỗi 403 Forbidden
             const link4mApiUrl = `https://link4m.co/st?api=${apiToken}&url=${encodeURIComponent(targetUrl)}`;
 
             window.location.href = link4mApiUrl;
