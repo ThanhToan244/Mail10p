@@ -3,18 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hoàn Thành Vượt Link - TToan</title>
+    <title>Hệ Thống Get Key - TToan</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4">
-    <div class="bg-slate-800 p-8 rounded-2xl shadow-xl text-center max-w-md w-full border border-slate-700">
-        <h1 id="statusText" class="text-xl font-bold text-cyan-400 mb-4">Đang cộng thưởng...</h1>
-        <p class="text-slate-400 text-sm mb-6">Hệ thống đang ghi nhận 0.5 coin vào tài khoản của bạn.</p>
-        
-        <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-xs font-semibold leading-relaxed">
-            ⚠️ <b>LƯU Ý QUAN TRỌNG:</b> Vượt 2 lần liên tiếp xong đổi key, không sẽ bị mất coin vô cớ!
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700">
+        <h1 class="text-2xl font-bold text-center text-cyan-400 mb-6">HỆ THỐNG GET KEY</h1>
+
+        <div class="mb-6 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl p-4 text-center shadow-lg">
+            <p class="text-sm uppercase tracking-wider font-semibold opacity-90">Số dư hiện tại</p>
+            <p class="text-4xl font-extrabold mt-1"><span id="coinBalance">0.0</span> <span class="text-lg">COIN</span></p>
+        </div>
+
+        <div class="space-y-3 mb-6">
+            <button type="button" onclick="doLinkTask()" class="w-full bg-emerald-600 hover:bg-emerald-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
+                <span>🚀 Vượt Link Kiếm 0.5 Coin</span>
+            </button>
+
+            <button type="button" onclick="exchangeKey()" class="w-full bg-indigo-600 hover:bg-indigo-500 transition font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2">
+                <span>🔑 Đổi Key (Giá: 1 Coin)</span>
+            </button>
+        </div>
+
+        <div class="bg-slate-900 rounded-xl p-4 border border-slate-700 mb-6">
+            <h2 class="text-sm font-semibold text-slate-400 mb-2">Key Gần Nhất:</h2>
+            <div class="flex items-center justify-between bg-slate-800 p-2 rounded-lg">
+                <input type="text" id="latestKey" readonly value="Chưa có key nào" class="bg-transparent w-full text-sm font-mono text-yellow-400 focus:outline-none">
+                <button type="button" onclick="copyKey()" class="bg-slate-700 hover:bg-slate-600 px-3 py-1 text-xs rounded-md transition ml-2">Sao chép</button>
+            </div>
+        </div>
+
+        <div class="bg-slate-900 rounded-xl p-4 border border-slate-700">
+            <h2 class="text-sm font-semibold text-slate-400 mb-3">📜 Lịch Sử & Trạng Thái Key:</h2>
+            <div id="keyListContainer" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                <p class="text-xs text-slate-500 text-center py-2">Chưa có lịch sử key nào.</p>
+            </div>
         </div>
     </div>
 
@@ -32,42 +58,138 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const deviceId = urlParams.get('dev');
-
-        function goBackHome() {
-            // Lấy chính gốc GitHub Pages của bạn (ví dụ: https://anhtoan244.github.io/)
-            const baseUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
-            window.location.href = baseUrl; // Chuyển về trang chủ ngay lập tức
+        let deviceId = localStorage.getItem('ttoan_device_id');
+        if (!deviceId) {
+            deviceId = 'dev_' + Math.random().toString(36).substring(2, 10);
+            localStorage.setItem('ttoan_device_id', deviceId);
         }
 
-        if (deviceId) {
-            const userRef = db.ref('users/' + deviceId);
+        const userRef = db.ref('users/' + deviceId);
+        const userKeysRef = db.ref('user_keys/' + deviceId);
+
+        userRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                document.getElementById('coinBalance').innerText = (data.coins || 0.0).toFixed(1);
+                document.getElementById('latestKey').value = data.latestKey || 'Chưa có';
+            } else {
+                userRef.set({ coins: 0.0, latestKey: 'Chưa có' });
+            }
+        });
+
+        userKeysRef.on('value', (snapshot) => {
+            const container = document.getElementById('keyListContainer');
+            container.innerHTML = '';
             
-            // Dùng lệnh cập nhật trực tiếp thay vì transaction để tránh bị treo nếu mạng yếu
-            userRef.once('value').then((snapshot) => {
-                let currentData = snapshot.val() || { coins: 0.0, latestKey: 'Chưa có' };
-                let newCoins = (parseFloat(currentData.coins) || 0.0) + 0.5;
+            const keysData = snapshot.val();
+            if (!keysData) {
+                container.innerHTML = '<p class="text-xs text-slate-500 text-center py-2">Chưa có lịch sử key nào.</p>';
+                return;
+            }
 
-                userRef.update({
-                    coins: newCoins,
-                    latestKey: currentData.latestKey || 'Chưa có'
-                }).then(() => {
-                    document.getElementById('statusText').innerText = "🎉 +0.5 Coin Thành Công! Đang về trang chủ...";
-                    setTimeout(goBackHome, 1200); // Đợi 1.2 giây rồi tự động nhảy về
-                }).catch((err) => {
-                    console.error(err);
-                    // Dù lỗi mạng vẫn cho về trang chủ để người dùng không bị kẹt
-                    document.getElementById('statusText').innerText = "⚠️ Đang chuyển hướng về trang chủ...";
-                    setTimeout(goBackHome, 1200);
-                });
-            }).catch(() => {
-                setTimeout(goBackHome, 1200);
+            Object.keys(keysData).forEach((keyStr) => {
+                const keyInfo = keysData[keyStr];
+                const isUsed = keyInfo.used;
+
+                const rowDiv = document.createElement('div');
+                rowDiv.className = "flex items-center justify-between bg-slate-800 p-2.5 rounded-lg text-xs font-mono";
+
+                const leftPart = document.createElement('span');
+                leftPart.className = "text-cyan-300 font-bold truncate max-w-[140px]";
+                leftPart.innerText = keyStr;
+
+                const rightPart = document.createElement('div');
+                rightPart.className = "flex items-center space-x-2";
+
+                const statusBadge = document.createElement('span');
+                if (isUsed) {
+                    statusBadge.className = "bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded text-[10px] font-semibold";
+                    statusBadge.innerText = "Đã dùng";
+                } else {
+                    statusBadge.className = "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-semibold";
+                    statusBadge.innerText = "Còn dùng";
+                }
+                rightPart.appendChild(statusBadge);
+
+                if (isUsed) {
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = "bg-red-600/30 hover:bg-red-600 text-red-300 hover:text-white p-1 rounded transition";
+                    deleteBtn.title = "Xóa key đã dùng";
+                    deleteBtn.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    `;
+                    deleteBtn.onclick = () => deleteKey(keyStr);
+                    rightPart.appendChild(deleteBtn);
+                }
+
+                rowDiv.appendChild(leftPart);
+                rowDiv.appendChild(rightPart);
+                container.appendChild(rowDiv);
             });
+        });
 
-        } else {
-            document.getElementById('statusText').innerText = "❌ Không tìm thấy thiết bị, đang về trang chủ...";
-            setTimeout(goBackHome, 1500);
+        function doLinkTask() {
+            let currentPath = window.location.href.split('?')[0];
+            if (!currentPath.endsWith('.html')) {
+                if (!currentPath.endsWith('/')) currentPath += '/';
+                currentPath += 'index.html';
+            }
+            const targetUrl = currentPath.replace('index.html', 'complete.html') + `?dev=${deviceId}`;
+            
+            const apiToken = "667da5e0512ac00cba52fb6f";
+            const link4mApiUrl = `https://link4m.co/st?api=${apiToken}&url=${encodeURIComponent(targetUrl)}`;
+
+            window.location.href = link4mApiUrl;
+        }
+
+        function exchangeKey() {
+            userRef.transaction((currentData) => {
+                if (!currentData) currentData = { coins: 0.0, latestKey: 'Chưa có' };
+                
+                if (currentData.coins < 1.0) {
+                    alert('Bạn cần ít nhất 1 Coin để đổi key! Hãy vượt thêm link.');
+                    return; 
+                }
+
+                currentData.coins -= 1.0;
+                const newKey = 'TTOAN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+                currentData.latestKey = newKey;
+
+                db.ref('keys/' + newKey).set({
+                    used: false,
+                    createdAt: Date.now()
+                });
+
+                db.ref('user_keys/' + deviceId + '/' + newKey).set({
+                    used: false,
+                    createdAt: Date.now()
+                });
+
+                return currentData;
+            }, (error, committed) => {
+                if (committed) {
+                    alert('Đổi key thành công (-1 Coin)!');
+                }
+            });
+        }
+
+        function deleteKey(keyStr) {
+            if (confirm(`Bạn có chắc chắn muốn xóa key ${keyStr} khỏi lịch sử không?`)) {
+                db.ref('user_keys/' + deviceId + '/' + keyStr).remove();
+            }
+        }
+
+        function copyKey() {
+            const keyInput = document.getElementById('latestKey');
+            if (keyInput.value === 'Chưa có' || keyInput.value === 'Chưa có key nào') {
+                alert('Chưa có key để sao chép!');
+                return;
+            }
+            keyInput.select();
+            navigator.clipboard.writeText(keyInput.value);
+            alert('Đã sao chép key!');
         }
     </script>
 </body>
