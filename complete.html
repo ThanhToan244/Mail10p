@@ -1,1 +1,58 @@
 
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hoàn Thành Vượt Link</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4">
+    <div class="bg-slate-800 p-8 rounded-2xl shadow-xl text-center max-w-sm w-full border border-slate-700">
+        <h1 id="statusText" class="text-xl font-bold text-cyan-400 mb-4">Đang cộng thưởng...</h1>
+        <p class="text-slate-400 text-sm">Hệ thống đang ghi nhận 0.5 coin vào tài khoản của bạn.</p>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAKJQwQpXNMN31QoN4UNBJt6rigrkoYk6I",
+            authDomain: "ttoan-like-bot.firebaseapp.com",
+            databaseURL: "https://ttoan-like-bot-default-rtdb.firebaseio.com/",
+            projectId: "ttoan-like-bot",
+            storageBucket: "ttoan-like-bot.firebasestorage.app",
+            messagingSenderId: "322115758267",
+            appId: "1:322115758267:web:157c58b911500f83bc619e",
+            measurementId: "G-15RMWQHBKX"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const uid = urlParams.get('uid');
+
+        if (uid) {
+            const userRef = db.ref('users/' + uid);
+            userRef.transaction((currentData) => {
+                if (!currentData) {
+                    currentData = { coins: 0.0, latestKey: 'Chưa có' };
+                }
+                currentData.coins += 0.5; // Cộng 0.5 coin
+                return currentData;
+            }, (error, committed) => {
+                if (committed) {
+                    document.getElementById('statusText').innerText = "🎉 +0.5 Coin Thành Công!";
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 2000);
+                } else {
+                    document.getElementById('statusText').innerText = "❌ Có lỗi xảy ra!";
+                }
+            });
+        } else {
+            document.getElementById('statusText').innerText = "❌ Không tìm thấy thông tin người dùng!";
+        }
+    </script>
+</body>
+</html>
