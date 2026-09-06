@@ -13,7 +13,6 @@
         <h1 id="statusText" class="text-xl font-bold text-cyan-400 mb-4">Đang cộng thưởng...</h1>
         <p class="text-slate-400 text-sm mb-6">Hệ thống đang ghi nhận 0.5 coin vào tài khoản của bạn.</p>
         
-        <!-- LƯU Ý TO NHƯ YÊU CẦU -->
         <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-xs font-semibold leading-relaxed">
             ⚠️ <b>LƯU Ý QUAN TRỌNG:</b> Vượt 2 lần liên tiếp xong đổi key, không sẽ bị mất coin vô cớ!
         </div>
@@ -36,29 +35,39 @@
         const urlParams = new URLSearchParams(window.location.search);
         const deviceId = urlParams.get('dev');
 
+        function goBackHome() {
+            // Lấy chính gốc GitHub Pages của bạn (ví dụ: https://anhtoan244.github.io/)
+            const baseUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+            window.location.href = baseUrl; // Chuyển về trang chủ ngay lập tức
+        }
+
         if (deviceId) {
             const userRef = db.ref('users/' + deviceId);
-            userRef.transaction((currentData) => {
-                if (!currentData) {
-                    currentData = { coins: 0.0, latestKey: 'Chưa có' };
-                }
-                currentData.coins += 0.5; // Tự động cộng 0.5 coin
-                return currentData;
-            }, (error, committed) => {
-                if (committed) {
-                    document.getElementById('statusText').innerText = "🎉 +0.5 Coin Thành Công! Đang quay lại...";
-                    
-                    // Tự động chuyển hướng ngay về trang chính (index.html) sau 1.5 giây
-                    setTimeout(() => {
-                        let mainPage = window.location.href.split('?')[0].replace('complete.html', 'index.html');
-                        window.location.href = mainPage;
-                    }, 1500);
-                } else {
-                    document.getElementById('statusText').innerText = "❌ Có lỗi xảy ra khi cộng xu!";
-                }
+            
+            // Dùng lệnh cập nhật trực tiếp thay vì transaction để tránh bị treo nếu mạng yếu
+            userRef.once('value').then((snapshot) => {
+                let currentData = snapshot.val() || { coins: 0.0, latestKey: 'Chưa có' };
+                let newCoins = (parseFloat(currentData.coins) || 0.0) + 0.5;
+
+                userRef.update({
+                    coins: newCoins,
+                    latestKey: currentData.latestKey || 'Chưa có'
+                }).then(() => {
+                    document.getElementById('statusText').innerText = "🎉 +0.5 Coin Thành Công! Đang về trang chủ...";
+                    setTimeout(goBackHome, 1200); // Đợi 1.2 giây rồi tự động nhảy về
+                }).catch((err) => {
+                    console.error(err);
+                    // Dù lỗi mạng vẫn cho về trang chủ để người dùng không bị kẹt
+                    document.getElementById('statusText').innerText = "⚠️ Đang chuyển hướng về trang chủ...";
+                    setTimeout(goBackHome, 1200);
+                });
+            }).catch(() => {
+                setTimeout(goBackHome, 1200);
             });
+
         } else {
-            document.getElementById('statusText').innerText = "❌ Không tìm thấy thông tin thiết bị!";
+            document.getElementById('statusText').innerText = "❌ Không tìm thấy thiết bị, đang về trang chủ...";
+            setTimeout(goBackHome, 1500);
         }
     </script>
 </body>
