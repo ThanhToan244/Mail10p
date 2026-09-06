@@ -3,68 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đăng Nhập / Đăng Ký - TToan</title>
+    <title>Đăng Nhập Telegram - TToan</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
 
-    <!-- BẢO VỆ CHỐNG FAKE IP / DATACENTER AN TOÀN -->
-    <script>
-        (async function checkVPN() {
-            try {
-                const res = await fetch('https://ipapi.co/json/');
-                if (!res.ok) return;
-                const data = await res.json();
-                window.userIP = data.ip || "unknown";
-                const org = (data.org || "").toLowerCase();
-                const type = (data.type || "").toLowerCase();
-                if (org.includes('hosting') || org.includes('datacenter') || org.includes('ovh') || type === 'hosting') {
-                    document.body.innerHTML = "<div style='color:red; text-align:center; margin-top:20vh; font-family:sans-serif;'><h2>❌ Truy cập bị từ chối! Phát hiện sử dụng Server / Proxy / VPN.</h2></div>";
-                }
-            } catch (e) {
-                console.log("Bỏ qua kiểm tra IP do lỗi kết nối.");
-            }
-        })();
-    </script>
-
     <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700">
-        <h1 class="text-2xl font-bold text-center text-cyan-400 mb-6">HỆ THỐNG ĐỔI KEY TTOAN</h1>
+        <h1 class="text-2xl font-bold text-center text-cyan-400 mb-2">HỆ THỐNG TELEGRAM</h1>
+        <p class="text-center text-slate-400 text-sm mb-6">Nhập ID Telegram của bạn để tiếp tục</p>
         
-        <div class="flex border-b border-slate-700 mb-4">
-            <button onclick="switchTab('login')" id="tabLogin" class="w-1/2 py-2 font-bold text-cyan-400 border-b-2 border-cyan-400">Đăng Nhập</button>
-            <button onclick="switchTab('register')" id="tabRegister" class="w-1/2 py-2 font-bold text-slate-400">Đăng Ký</button>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm text-slate-400 mb-1">Telegram ID (Ví dụ: 123456789)</label>
+                <input type="text" id="teleIdInput" placeholder="Nhập ID Telegram..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-400 font-mono">
+            </div>
+            <button type="button" onclick="handleTelegramLogin()" class="w-full bg-cyan-600 hover:bg-cyan-500 font-bold py-3 rounded-xl transition shadow-lg">Vào Hệ Thống</button>
         </div>
-
-        <!-- Form Đăng Nhập -->
-        <div id="loginForm" class="space-y-4">
-            <div>
-                <label class="block text-sm text-slate-400 mb-1">Tên đăng nhập</label>
-                <input type="text" id="loginUser" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-400">
-            </div>
-            <div>
-                <label class="block text-sm text-slate-400 mb-1">Mật khẩu</label>
-                <input type="password" id="loginPass" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-400">
-            </div>
-            <button type="button" onclick="handleLogin()" class="w-full bg-cyan-600 hover:bg-cyan-500 font-bold py-3 rounded-xl transition">Đăng Nhập</button>
-        </div>
-
-        <!-- Form Đăng Ký -->
-        <div id="registerForm" class="space-y-3 hidden">
-            <div>
-                <label class="block text-sm text-slate-400 mb-1">Tên đăng nhập</label>
-                <input type="text" id="regUser" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-400">
-            </div>
-            <div>
-                <label class="block text-sm text-slate-400 mb-1">Mật khẩu (ít nhất 6 ký tự)</label>
-                <input type="password" id="regPass" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-400">
-            </div>
-            <div>
-                <label class="block text-sm text-slate-400 mb-1">Xác nhận mật khẩu</label>
-                <input type="password" id="regPassConfirm" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-400">
-            </div>
-            <button type="button" onclick="handleRegister()" class="w-full bg-emerald-600 hover:bg-emerald-500 font-bold py-3 rounded-xl transition mt-2">Đăng Ký Tài Khoản</button>
+        
+        <div class="mt-6 text-center text-xs text-slate-500">
+            Dùng bot Telegram gõ lệnh <b class="text-cyan-400">/my</b> để lấy ID của bạn.
         </div>
     </div>
 
@@ -82,96 +41,36 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Nếu đã có phiên đăng nhập trong vòng 7 ngày thì chuyển thẳng sang getkey.html luôn
+        // Kiểm tra phiên đăng nhập sẵn
         const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000;
-        let savedSession = JSON.parse(localStorage.getItem('ttoan_session') || 'null');
+        let savedSession = JSON.parse(localStorage.getItem('ttoan_tele_session') || 'null');
         if (savedSession && (Date.now() - savedSession.time < SESSION_DURATION)) {
             window.location.href = 'getkey.html';
         }
 
-        function switchTab(tab) {
-            if (tab === 'login') {
-                document.getElementById('loginForm').classList.remove('hidden');
-                document.getElementById('registerForm').classList.add('hidden');
-                document.getElementById('tabLogin').className = "w-1/2 py-2 font-bold text-cyan-400 border-b-2 border-cyan-400";
-                document.getElementById('tabRegister').className = "w-1/2 py-2 font-bold text-slate-400";
-            } else {
-                document.getElementById('loginForm').classList.add('hidden');
-                document.getElementById('registerForm').classList.remove('hidden');
-                document.getElementById('tabRegister').className = "w-1/2 py-2 font-bold text-cyan-400 border-b-2 border-cyan-400";
-                document.getElementById('tabLogin').className = "w-1/2 py-2 font-bold text-slate-400";
-            }
-        }
+        async function handleTelegramLogin() {
+            const teleId = document.getElementById('teleIdInput').value.trim();
 
-        async function handleRegister() {
-            const user = document.getElementById('regUser').value.trim();
-            const pass = document.getElementById('regPass').value;
-            const passConfirm = document.getElementById('regPassConfirm').value;
-
-            if (!user || !pass || !passConfirm) {
-                alert('Vui lòng điền đầy đủ tất cả các thông tin!');
-                return;
-            }
-
-            if (pass.length < 6) {
-                alert('Mật khẩu phải có ít nhất 6 ký tự!');
-                return;
-            }
-
-            if (pass !== passConfirm) {
-                alert('Mật khẩu xác nhận không khớp!');
+            if (!teleId || isNaN(teleId)) {
+                alert('Vui lòng nhập ID Telegram hợp lệ (chỉ gồm các chữ số)!');
                 return;
             }
 
             try {
-                const userRef = db.ref('accounts/' + user);
-                const userSnap = await userRef.get();
-
-                if (userSnap.exists()) {
-                    alert('Tên đăng nhập này đã tồn tại trên hệ thống!');
-                    return;
-                }
-
-                await userRef.set({
-                    password: pass,
-                    coins: 0.0,
-                    latestKey: 'Chưa có',
-                    createdAt: Date.now()
-                });
-
-                localStorage.setItem('ttoan_session', JSON.stringify({ username: user, time: Date.now() }));
-                alert('Đăng ký thành công!');
-                window.location.href = 'getkey.html';
-            } catch (error) {
-                alert('Lỗi kết nối cơ sở dữ liệu!');
-            }
-        }
-
-        async function handleLogin() {
-            const user = document.getElementById('loginUser').value.trim();
-            const pass = document.getElementById('loginPass').value;
-
-            if (!user || !pass) {
-                alert('Vui lòng nhập tên đăng nhập và mật khẩu!');
-                return;
-            }
-
-            try {
-                const userRef = db.ref('accounts/' + user);
+                const userRef = db.ref('accounts/tele_' + teleId);
                 const snap = await userRef.get();
 
                 if (!snap.exists()) {
-                    alert('Tên đăng nhập không tồn tại!');
-                    return;
+                    // Nếu chưa có, tự động tạo tài khoản mới với 0 coin
+                    await userRef.set({
+                        teleId: teleId,
+                        coins: 0.0,
+                        latestKey: 'Chưa có',
+                        createdAt: Date.now()
+                    });
                 }
 
-                const data = snap.val();
-                if (data.password !== pass) {
-                    alert('Mật khẩu không chính xác!');
-                    return;
-                }
-
-                localStorage.setItem('ttoan_session', JSON.stringify({ username: user, time: Date.now() }));
+                localStorage.setItem('ttoan_tele_session', JSON.stringify({ teleId: teleId, time: Date.now() }));
                 window.location.href = 'getkey.html';
             } catch (error) {
                 alert('Lỗi kết nối cơ sở dữ liệu!');
