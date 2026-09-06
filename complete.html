@@ -9,9 +9,14 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4">
-    <div class="bg-slate-800 p-8 rounded-2xl shadow-xl text-center max-w-sm w-full border border-slate-700">
+    <div class="bg-slate-800 p-8 rounded-2xl shadow-xl text-center max-w-md w-full border border-slate-700">
         <h1 id="statusText" class="text-xl font-bold text-cyan-400 mb-4">Đang cộng thưởng...</h1>
-        <p class="text-slate-400 text-sm">Hệ thống đang ghi nhận 0.5 coin vào tài khoản Telegram của bạn.</p>
+        <p class="text-slate-400 text-sm mb-6">Hệ thống đang ghi nhận 0.5 coin vào tài khoản của bạn.</p>
+        
+        <!-- LƯU Ý TO NHƯ YÊU CẦU -->
+        <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-xs font-semibold leading-relaxed">
+            ⚠️ <b>LƯU Ý QUAN TRỌNG:</b> Vượt 2 lần liên tiếp xong đổi key, không sẽ bị mất coin vô cớ!
+        </div>
     </div>
 
     <script>
@@ -29,28 +34,28 @@
         const db = firebase.database();
 
         const urlParams = new URLSearchParams(window.location.search);
-        const teleId = urlParams.get('tele');
+        const deviceId = urlParams.get('dev');
 
-        if (teleId) {
-            const userRef = db.ref('accounts/tele_' + teleId);
+        if (deviceId) {
+            const userRef = db.ref('users/' + deviceId);
             userRef.transaction((currentData) => {
                 if (!currentData) {
-                    currentData = { teleId: teleId, coins: 0.0, latestKey: 'Chưa có' };
+                    currentData = { coins: 0.0, latestKey: 'Chưa có' };
                 }
-                currentData.coins += 0.5; // Cộng 0.5 coin sau khi vượt link
+                currentData.coins += 0.5; // Cộng 0.5 coin
                 return currentData;
             }, (error, committed) => {
                 if (committed) {
                     document.getElementById('statusText').innerText = "🎉 +0.5 Coin Thành Công!";
                     setTimeout(() => {
-                        window.location.href = 'getkey.html';
-                    }, 2000);
+                        window.location.href = 'index.html';
+                    }, 3500);
                 } else {
                     document.getElementById('statusText').innerText = "❌ Có lỗi xảy ra!";
                 }
             });
         } else {
-            document.getElementById('statusText').innerText = "❌ Không tìm thấy ID Telegram!";
+            document.getElementById('statusText').innerText = "❌ Không tìm thấy thông tin thiết bị!";
         }
     </script>
 </body>
